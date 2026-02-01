@@ -32,25 +32,40 @@ final class ScreenCapturePermissionManager: ObservableObject {
         // via requestPermissionAndStartMonitoring()
     }
 
+    /// Result of permission verification attempt
+    private enum VerificationResult {
+        case granted
+        case denied          // Definitive denial (user explicitly declined/revoked)
+        case transientError  // Temporary failure (cold boot timing, system initialization)
+    }
+
     /// Verify permission using ScreenCaptureKit with retry logic
-    /// Returns true if permission is confirmed, false if all attempts fail
-    /// On macOS Sequoia, ScreenCaptureKit can throw errors at app launch even when permission is granted
+    /// Returns .granted if permission is confirmed, .denied if explicitly declined, .transientError otherwise
+    /// On macOS Sequoia/Tahoe, ScreenCaptureKit can throw errors at app launch even when permission is granted
     /// This is a known issue where the system needs time to initialize screen capture subsystems
-    private func verifyPermissionViaScreenCaptureKit(maxAttempts: Int = 5, delaySeconds: Double = 1.0) async -> Bool {
+    private func verifyPermissionViaScreenCaptureKit(maxAttempts: Int = 5, delaySeconds: Double = 1.0) async -> VerificationResult {
+        var sawDefinitiveDenial = false
+
         for attempt in 1...maxAttempts {
             do {
                 _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
                 hasPermission = true
                 stopPolling()
+                // Track successful permission verification
+                UserDefaults.standard.set(true, forKey: "hasVerifiedScreenRecordingPermission")
                 Logger.log(.info, "ScreenCaptureKit permission verified on attempt \(attempt)")
-                return true
+                return .granted
             } catch let error as NSError {
-                // On macOS Sequoia, ScreenCaptureKit can fail temporarily during system initialization
-                // even when permission is granted. We retry to handle these transient failures.
-                // Note: Some error codes like -3801 (userDeclined) may indicate actual denials,
-                // but Sequoia exhibits flaky behavior where retrying can succeed after system warmup.
+                // Error code -3801 (SCStreamErrorUserDeclined) indicates user explicitly denied permission
+                // Error code -3802 (SCStreamErrorFailedToStart) can also indicate permission issues
+                // On macOS Sequoia/Tahoe, these can also occur transiently during cold boot
+                let isDefinitiveDenial = error.code == -3801
 
-                Logger.log(.info, "ScreenCaptureKit attempt \(attempt)/\(maxAttempts) failed: \(error.localizedDescription) (domain: \(error.domain), code: \(error.code))")
+                Logger.log(.info, "ScreenCaptureKit attempt \(attempt)/\(maxAttempts) failed: \(error.localizedDescription) (domain: \(error.domain), code: \(error.code), definitiveDenial: \(isDefinitiveDenial))")
+
+                if isDefinitiveDenial {
+                    sawDefinitiveDenial = true
+                }
 
                 if attempt < maxAttempts {
                     // Use linear backoff for better handling of slow system initialization
@@ -66,21 +81,30 @@ final class ScreenCapturePermissionManager: ObservableObject {
                 }
             }
         }
-        return false
+
+        // If we saw a definitive denial code, report it
+        // Otherwise, it's likely a transient error (cold boot timing issue)
+        return sawDefinitiveDenial ? .denied : .transientError
     }
 
     /// Request permission and start monitoring for changes
     func requestPermissionAndStartMonitoring() async {
         Logger.log(.info, "Starting permission request and monitoring...")
 
-        // First, check via ScreenCaptureKit with retries (more reliable on macOS Sequoia)
+        // Check if user previously had permission verified successfully
+        // This is more reliable than just checking onboarding completion
+        let hadPermissionBefore = UserDefaults.standard.bool(forKey: "hasVerifiedScreenRecordingPermission")
+
+        // First, check via ScreenCaptureKit with retries (more reliable on macOS Sequoia/Tahoe)
         // CGPreflightScreenCaptureAccess can return false even when permission is granted
         // ScreenCaptureKit can also throw errors after restart/cold boot, so we retry with linear backoff
-        // Use more attempts (5) and longer base delay (1.0s) for initial check since we might be starting from cold boot
-        let hasPermissionNow = await verifyPermissionViaScreenCaptureKit(maxAttempts: 5, delaySeconds: 1.0)
+        // Use more attempts and longer delays if user previously had permission (likely still granted)
+        let maxAttempts = hadPermissionBefore ? 8 : 5
+        let baseDelay = hadPermissionBefore ? 1.5 : 1.0
+        let verificationResult = await verifyPermissionViaScreenCaptureKit(maxAttempts: maxAttempts, delaySeconds: baseDelay)
 
-        // If already granted, no need to show dialog
-        if hasPermissionNow {
+        // If permission verified, we're done
+        if verificationResult == .granted {
             Logger.log(.info, "Permission already granted (verified via ScreenCaptureKit with retries)")
             return
         }
@@ -90,11 +114,43 @@ final class ScreenCapturePermissionManager: ObservableObject {
         if CGPreflightScreenCaptureAccess() {
             Logger.log(.info, "Permission detected via CGPreflightScreenCaptureAccess after ScreenCaptureKit failed")
             hasPermission = true
+            UserDefaults.standard.set(true, forKey: "hasVerifiedScreenRecordingPermission")
             return
         }
 
-        // Only trigger the system permission dialog if truly not granted after all retry methods
-        // AND if enough time has passed since the last popup (cooldown period)
+        // Decision logic for showing the system permission dialog:
+        // - If we got a definitive denial: user explicitly declined/revoked, show dialog
+        // - If we got transient errors AND user had permission before: likely cold boot issue, poll silently
+        // - If we got transient errors AND user never had permission: new user, show dialog
+
+        switch verificationResult {
+        case .granted:
+            // Already handled above
+            break
+
+        case .denied:
+            // User explicitly declined or revoked permission
+            // Clear the "had permission" flag and show dialog
+            Logger.log(.info, "Permission was explicitly denied/revoked, showing system dialog")
+            UserDefaults.standard.set(false, forKey: "hasVerifiedScreenRecordingPermission")
+            showSystemDialogIfCooldownExpired()
+
+        case .transientError:
+            if hadPermissionBefore {
+                // User had permission before, this is likely a macOS Sequoia/Tahoe cold-boot timing issue
+                // Don't spam them with dialogs — just poll silently until the system catches up
+                Logger.log(.info, "Permission was verified before; transient error likely due to cold boot. Polling silently.")
+                startPolling()
+            } else {
+                // New user who never had permission, show the dialog
+                Logger.log(.info, "New user, showing system dialog")
+                showSystemDialogIfCooldownExpired()
+            }
+        }
+    }
+
+    /// Show the system permission dialog if cooldown has expired
+    private func showSystemDialogIfCooldownExpired() {
         let now = Date()
         let shouldShowPopup: Bool
 
@@ -111,7 +167,7 @@ final class ScreenCapturePermissionManager: ObservableObject {
         }
 
         if shouldShowPopup {
-            Logger.log(.info, "Permission not detected after retries, showing system dialog")
+            Logger.log(.info, "Showing system permission dialog")
             let result = CGRequestScreenCaptureAccess()
             hasPermission = result
             lastPopupTime = now
@@ -128,6 +184,8 @@ final class ScreenCapturePermissionManager: ObservableObject {
         // Only use the safe read-only API
         if CGPreflightScreenCaptureAccess() {
             hasPermission = true
+            // Track successful verification for future cold boot handling
+            UserDefaults.standard.set(true, forKey: "hasVerifiedScreenRecordingPermission")
             return true
         }
         // Return the cached value (may have been updated by prior ScreenCaptureKit verification)
@@ -161,15 +219,16 @@ final class ScreenCapturePermissionManager: ObservableObject {
             if !hasPermission {
                 hasPermission = true
                 stopPolling()
+                UserDefaults.standard.set(true, forKey: "hasVerifiedScreenRecordingPermission")
                 Logger.log(.info, "Screen capture permission granted (via CGPreflightScreenCaptureAccess)")
             }
             return
         }
 
         // Fallback: check via ScreenCaptureKit with a couple of attempts
-        // On macOS Sequoia, permission detection can be flaky even during polling
-        let verified = await verifyPermissionViaScreenCaptureKit(maxAttempts: 2, delaySeconds: 0.5)
-        if verified {
+        // On macOS Sequoia/Tahoe, permission detection can be flaky even during polling
+        let result = await verifyPermissionViaScreenCaptureKit(maxAttempts: 2, delaySeconds: 0.5)
+        if result == .granted {
             Logger.log(.info, "Screen capture permission granted (via ScreenCaptureKit polling)")
         }
     }

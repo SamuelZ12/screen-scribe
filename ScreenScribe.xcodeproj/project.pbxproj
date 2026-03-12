@@ -40,6 +40,7 @@
 		C1000002000000000000000A /* PromptManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000002000000000000000B /* PromptManager.swift */; };
 		C1000003000000000000000A /* PromptEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000003000000000000000B /* PromptEditorView.swift */; };
 		C1000004000000000000000A /* PromptListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000004000000000000000B /* PromptListView.swift */; };
+		C1000006000000000000000A /* ScreenCaptureBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000006000000000000000B /* ScreenCaptureBackend.swift */; };
 		F5B0C7647A784F30BB1B71D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C128894D5D084D2FBAADA65C /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -81,6 +82,7 @@
 		C1000002000000000000000B /* PromptManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptManager.swift; sourceTree = "<group>"; };
 		C1000003000000000000000B /* PromptEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptEditorView.swift; sourceTree = "<group>"; };
 		C1000004000000000000000B /* PromptListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptListView.swift; sourceTree = "<group>"; };
+		C1000006000000000000000B /* ScreenCaptureBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureBackend.swift; sourceTree = "<group>"; };
 		C128894D5D084D2FBAADA65C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -130,6 +132,7 @@
 			children = (
 				B9583C8A2DBD8C8300F43550 /* GeminiService.swift */,
 				B9F54FE82F10866C0070D1C2 /* ScreenCapturePermissionManager.swift */,
+				C1000006000000000000000B /* ScreenCaptureBackend.swift */,
 				C1000002000000000000000B /* PromptManager.swift */,
 			);
 			path = Services;
@@ -302,6 +305,7 @@
 				C1000002000000000000000A /* PromptManager.swift in Sources */,
 				C1000003000000000000000A /* PromptEditorView.swift in Sources */,
 				C1000004000000000000000A /* PromptListView.swift in Sources */,
+				C1000006000000000000000A /* ScreenCaptureBackend.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

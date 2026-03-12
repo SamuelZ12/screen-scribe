@@ -54,6 +54,7 @@ final class App: NSObject, NSApplicationDelegate {
     private let historyManager = HistoryManager.shared
     private let promptManager = PromptManager.shared
     private lazy var permissionManager = ScreenCapturePermissionManager.shared
+    private let screenCaptureService = ScreenCaptureService()
 
     private var isExtracting = false
     private var isRequestingPermission = false
@@ -445,8 +446,7 @@ final class App: NSObject, NSApplicationDelegate {
     func initiateCaptureForText() {
         ensurePermissionThenCapture { [weak self] in
             guard let self else { return }
-            await self.captureViaSystemUI()
-            if let image = NSPasteboard.general.image {
+            if let image = await self.screenCaptureService.captureSelectionImage() {
                 self.performVisionExtraction(image: image)
             }
         }
@@ -456,22 +456,9 @@ final class App: NSObject, NSApplicationDelegate {
     func initiateCapture(with prompt: Prompt) {
         ensurePermissionThenCapture { [weak self] in
             guard let self else { return }
-            await self.captureViaSystemUI()
-            if let image = NSPasteboard.general.image {
+            if let image = await self.screenCaptureService.captureSelectionImage() {
                 self.performAIExtraction(image: image, prompt: prompt)
             }
-        }
-    }
-
-    private func captureViaSystemUI() async {
-        await withCheckedContinuation { continuation in
-            let task = Process()
-            task.launchPath = "/usr/sbin/screencapture"
-            task.arguments = ["-i", "-c", "-x"] // -i interactive, -c copy to clipboard, -x suppress sound
-            task.terminationHandler = { _ in
-                continuation.resume()
-            }
-            try? task.run()
         }
     }
 

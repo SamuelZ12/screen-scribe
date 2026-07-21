@@ -3,8 +3,8 @@
 
 PRODUCT_BUNDLE_IDENTIFIER = app.samuelz12.screenscribe-dev
 
-MARKETING_VERSION = 2.1.0
-CURRENT_PROJECT_VERSION = 13
+MARKETING_VERSION = 2.1.2
+CURRENT_PROJECT_VERSION = 14
 
 // Local.xcconfig is for developer-specific overrides.
 #include? "Local.xcconfig"

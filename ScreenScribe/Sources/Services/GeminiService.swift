@@ -45,29 +45,19 @@ struct GeminiService {
         self.maxRetries = maxRetries
         self.initialDelay = initialDelay
     }
-    
+
     private func shouldRetry(statusCode: Int, error: Error?) -> Bool {
         // Implement retry logic here
         // For example:
         return statusCode >= 500 || error is URLError && (error as? URLError)?.code == .networkConnectionLost
     }
-    
-    /// Extract content from an image using a customizable prompt
-    /// - Parameters:
-    ///   - base64Image: The image encoded as base64 PNG
-    ///   - apiKey: The Gemini API key
-    ///   - promptContent: The system prompt to use for extraction
-    /// - Returns: The extracted content as a string
-    func extractContent(from base64Image: String, apiKey: String, promptContent: String) async throws -> String {
-        guard !apiKey.isEmpty else {
-            throw GeminiAPIError.apiKeyMissing
-        }
 
-        // Get the selected model from UserDefaults
-        let model = Config.requestGeminiModelID(
-            from: UserDefaults.standard.string(forKey: "geminiModel")
-        )
-
+    static func makeRequest(
+        base64Image: String,
+        apiKey: String,
+        promptContent: String,
+        model: String
+    ) throws -> URLRequest {
         let payload: [String: Any] = [
             "contents": [[
                 "parts": [
@@ -83,21 +73,42 @@ struct GeminiService {
                 ]
             ],
             "generationConfig": [
-                "temperature": 0,
-                "candidateCount": 1,
                 "maxOutputTokens": 2048
             ]
         ]
-        
-        // Build URL with the specified model
+
         guard let url = URL(string: "\(Config.geminiEndpoint(for: model))?key=\(apiKey)") else {
             throw GeminiAPIError.invalidResponse
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        return request
+    }
+
+    /// Extract content from an image using a customizable prompt
+    /// - Parameters:
+    ///   - base64Image: The image encoded as base64 PNG
+    ///   - apiKey: The Gemini API key
+    ///   - promptContent: The system prompt to use for extraction
+    /// - Returns: The extracted content as a string
+    func extractContent(from base64Image: String, apiKey: String, promptContent: String) async throws -> String {
+        guard !apiKey.isEmpty else {
+            throw GeminiAPIError.apiKeyMissing
+        }
+
+        // Get the selected model from UserDefaults
+        let model = Config.requestGeminiModelID(
+            from: UserDefaults.standard.string(forKey: "geminiModel")
+        )
+        let request = try Self.makeRequest(
+            base64Image: base64Image,
+            apiKey: apiKey,
+            promptContent: promptContent,
+            model: model
+        )
         
         var retryCount = 0
         while retryCount <= maxRetries {

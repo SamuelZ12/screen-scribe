@@ -28,6 +28,12 @@ run_swift_test \
   ScreenScribe/Sources/Config.swift
 
 run_swift_test \
+  GeminiServiceRequestTests \
+  Tests/GeminiServiceRequestTests.swift \
+  ScreenScribe/Sources/Services/GeminiService.swift \
+  ScreenScribe/Sources/Config.swift
+
+run_swift_test \
   ScreenCaptureCLIArgumentsTests \
   Tests/ScreenCaptureCLIArgumentsTests.swift \
   ScreenScribe/Sources/Services/ScreenCaptureBackend.swift \

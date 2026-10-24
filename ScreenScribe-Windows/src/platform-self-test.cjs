@@ -12,10 +12,10 @@ async function run(electron){
   const {app,BrowserWindow,ipcMain,safeStorage,globalShortcut,screen,desktopCapturer,nativeImage,session}=electron;
   const report={kind:'windows-native-self-test',version:app.getVersion(),platform:process.platform,architecture:process.arch,checkedAt:new Date().toISOString(),networkRequests:0,realCredentialsAccessed:false,checks:[],ok:false};
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'ScreenScribe-Windows-SelfTest-'));
-  let win=null,shortcut=null;
+  let win=null,shortcut=null,phase='initialization';
   const check=(name,pass)=>{report.checks.push({name,passed:Boolean(pass)});if(!pass)throw new Error(name);};
   try{
-    check('Windows 10/11 process',process.platform==='win32');
+    check('Native Windows process',process.platform==='win32');
     const cryptoAdapter=createWindowsCryptoAdapter(safeStorage);
     check('Windows DPAPI available',await cryptoAdapter.available());
     const vault=new CredentialVault(new JsonFileStore(folder),cryptoAdapter);
@@ -35,7 +35,8 @@ async function run(electron){
     const size=image.getSize();check('Bundled public fixture decoded',!image.isEmpty()&&size.width>0&&size.height>0);
     const display=screen.getPrimaryDisplay(),work=display.workArea;
     win=new BrowserWindow({x:work.x+24,y:work.y+24,width:716,height:524,show:false,frame:false,thickFrame:false,resizable:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,session:local}});
-    win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(event,target)=>{if(target!==url)event.preventDefault();});
+    let allowedURL=url;
+    win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(event,target)=>{if(target!==allowedURL)event.preventDefault();});
     const state={version:app.getVersion(),platform:'win32',isDemo:true,settings:{provider:'mathpix',mode:'equation',visionBaseURL:'https://api.openai.com/v1',visionModel:'',captureShortcut:'Control+Shift+L',pasteShortcut:'Control+Shift+V',persistImages:false,monthlyImageLimit:0},credentialStatus:{mathpix:false,vision:false},busy:false,error:null,notice:'离线 Windows 自检 · 内置公开测试图',result:{id:'native-self-test',createdAt:new Date().toISOString(),mode:'equation',provider:'mathpix',code:String.raw`E=mc^2,\qquad x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}`,structure:'',warnings:[],confidence:null,imageDataUrl:image.toDataURL()},history:[],quota:{remaining:null,monthlyUsed:null,detail:'离线自检，未发送 API 请求。',completionRemainder:0,nextRefreshIn:5,stale:false},pinned:true,shortcutError:null};
     let rendererReady=false;
     ipcMain.handle('screenscribe:state',event=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==url)throw new Error('source');rendererReady=true;return state;});
@@ -44,6 +45,7 @@ async function run(electron){
     const deadline=Date.now()+8000;while(!rendererReady&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
     check('Sandbox renderer and IPC loaded on Windows',rendererReady);
     // The app's own frame rendering is deterministic and contains only the public fixture.
+    phase='render application frame';
     const renderedUI=await win.webContents.capturePage();check('Own application frame rendered',!renderedUI.isEmpty()&&renderedUI.getSize().width>500);
     // A full multicolour public pattern avoids false positives from a white
     // desktop or an unrelated white window. The pattern never leaves this PC.
@@ -52,10 +54,14 @@ async function run(electron){
     for(let y=0;y<10;y++)for(let x=0;x<10;x++)cells+=`<i style="background:${colours[(x+3*y)%4]}"></i>`;
     const fixture=path.join(folder,'public-test-pattern.html');
     fs.writeFileSync(fixture,`<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}body{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}i{display:block}</style>${cells}`);
+    phase='load public multicolour fixture';allowedURL=pathToFileURL(fixture).href;
     await win.loadFile(fixture);win.show();win.focus();
+    phase='render public multicolour fixture';
     const rendered=await win.webContents.capturePage();
+    phase='enumerate Windows displays';
     const monitors=screen.getAllDisplays();check('Windows display enumeration',monitors.length>0&&monitors.every(d=>d.bounds.width>0&&d.bounds.height>0));
     await new Promise(resolve=>setTimeout(resolve,250));
+    phase='capture public test window desktop';
     const sources=await desktopCapturer.getSources({types:['screen'],thumbnailSize:{width:Math.ceil(display.bounds.width*display.scaleFactor),height:Math.ceil(display.bounds.height*display.scaleFactor)},fetchWindowIcons:false});
     const source=sources.find(s=>s.display_id===String(display.id));check('Desktop source matches physical display',source&&!source.thumbnail.isEmpty());
     const normalized=nativeImage.createFromBuffer(source.thumbnail.toPNG());
@@ -68,8 +74,10 @@ async function run(electron){
     check('Selected desktop crop matches unique public multicolour frame',samples>0&&difference/samples<4);
     // Desktop thumbnails stay in memory; no desktop image is written or uploaded.
     report.ok=true;
-  }catch{
-    report.ok=false;
+  }catch(error){
+    report.ok=false;report.failedPhase=phase;
+    report.errorCode=typeof error.code==='string'&&/^[A-Z0-9_]{1,80}$/.test(error.code)?error.code:null;
+    report.errorName=typeof error.name==='string'&&/^[A-Za-z]{1,40}$/.test(error.name)?error.name:'Error';
     if(!report.checks.some(c=>!c.passed))report.checks.push({name:'Native test completed without runtime exception',passed:false});
   }finally{
     if(shortcut)globalShortcut.unregister(shortcut);

@@ -1,0 +1,13 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'none'; connect-src 'none'">
+<link rel="stylesheet" href="katex.min.css"><script src="katex.min.js"></script>
+<style>html,body{margin:0;background:white;color:#17171d;width:100%;height:100%;overflow:auto}body{display:flex;align-items:center;justify-content:center;font-size:16px}#math{padding:14px 24px;min-width:0;max-width:100%;box-sizing:border-box}.katex-display{margin:0;overflow:visible;padding:10px 0}.empty{font:12px -apple-system;color:#9c9cab;letter-spacing:.2px}#error{font:11px -apple-system;color:#a65b4a;white-space:normal;margin-top:10px;text-align:center}</style>
+</head><body><div id="math"><span class="empty">框选公式后，识别结果将在这里显示</span></div>
+<script>
+window.renderEquation=function(source,scale){
+ const element=document.getElementById('math'); element.style.fontSize=(16*scale)+'px';
+ if(!source){element.textContent='';let empty=document.createElement('span');empty.className='empty';empty.textContent='框选公式后，识别结果将在这里显示';element.append(empty);return;}
+ try {katex.render(source,element,{displayMode:true,throwOnError:true,trust:false,strict:'ignore',maxExpand:1000,maxSize:20,macros:{'\\slashed':'\\not{#1}'}});}
+ catch(error){element.textContent=source;let note=document.createElement('div');note.id='error';note.textContent='此公式暂无法预览，LaTeX 源码仍可编辑和复制。';element.append(note);}
+};
+</script></body></html>

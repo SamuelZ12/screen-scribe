@@ -143,15 +143,3 @@ struct PromptEditorView: View {
         dismiss()
     }
 }
-
-#Preview("New Prompt") {
-    PromptEditorView(prompt: nil) { _ in }
-}
-
-#Preview("Edit Custom Prompt") {
-    PromptEditorView(prompt: Prompt(name: "Test", content: "Test content")) { _ in }
-}
-
-#Preview("Edit Built-in Prompt") {
-    PromptEditorView(prompt: Prompt.latexPrompt) { _ in }
-}

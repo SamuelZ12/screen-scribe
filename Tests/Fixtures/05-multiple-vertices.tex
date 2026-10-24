@@ -1,0 +1,12 @@
+\documentclass[border=12pt]{standalone}
+\usepackage{amsmath,amssymb,tikz-feynman}
+\tikzfeynmanset{compat=1.1.0}
+\begin{document}
+\begin{tikzpicture}
+\begin{feynman}
+\vertex (i) at (-2,0) {$e^-$}; \vertex (a) at (0,0); \vertex (b) at (2,0); \vertex (o) at (4,0) {$e^-$};
+\vertex (c) at (0,2); \vertex (d) at (2,2);
+\diagram*{ (i)--[fermion](a)--[fermion,edge label={$k$}](b)--[fermion](o), (a)--[photon](c)--[fermion](d)--[photon](b), (c)--[photon,half left](d) };
+\end{feynman}
+\end{tikzpicture}
+\end{document}

@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B9583CA72DBD8C8300F43550 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = B9583C9C2DBD8C8300F43550 /* Secrets.plist */; };
 		B9583CA82DBD8C8300F43550 /* Build.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = B9583C7B2DBD8C8300F43550 /* Build.xcconfig */; };
 		B9583CAC2DBD8C8300F43550 /* Screen Capture.aif in Resources */ = {isa = PBXBuildFile; fileRef = B9583C9B2DBD8C8300F43550 /* Screen Capture.aif */; };
 		B9583CAE2DBD8C8300F43550 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = B9583C9F2DBD8C8300F43550 /* LICENSE */; };
@@ -42,6 +41,23 @@
 		C1000004000000000000000A /* PromptListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000004000000000000000B /* PromptListView.swift */; };
 		C1000006000000000000000A /* ScreenCaptureBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000006000000000000000B /* ScreenCaptureBackend.swift */; };
 		F5B0C7647A784F30BB1B71D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C128894D5D084D2FBAADA65C /* Assets.xcassets */; };
+		D22000000000000000000001 /* APITransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000001; };
+		D22000000000000000000002 /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000002; };
+		D22000000000000000000003 /* MathpixProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000003; };
+		D22000000000000000000004 /* PhysicsSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000004; };
+		D22000000000000000000005 /* PhysicsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000005; };
+		D22000000000000000000006 /* PhysicsWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000006; };
+		D22000000000000000000007 /* RecognitionTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000007; };
+D22000000000000000000020 /* OpenAICompatibleVisionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000020; };
+D22000000000000000000021 /* RecognitionHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000021; };
+D22000000000000000000022 /* RecognitionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000022; };
+D22000000000000000000028 /* SnipPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000028; };
+D22000000000000000000029 /* LocalMathPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000029; };
+D22000000000000000000030 /* MathPreview in Resources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000030; };
+D22000000000000000000031 /* MathpixUsageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000031; };
+D22000000000000000000032 /* MathpixUsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000032; };
+D22000000000000000000033 /* MathpixCreditEstimate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000033; };
+D22000000000000000000034 /* MathpixCreditStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21000000000000000000034; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,7 +89,6 @@
 		B9583C992DBD8C8300F43550 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B9583C9A2DBD8C8300F43550 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		B9583C9B2DBD8C8300F43550 /* Screen Capture.aif */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Screen Capture.aif"; sourceTree = "<group>"; };
-		B9583C9C2DBD8C8300F43550 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Secrets.plist; sourceTree = "<group>"; };
 		B9583C9E2DBD8C8300F43550 /* ScreenScribe.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = ScreenScribe.xcodeproj; sourceTree = "<group>"; };
 		B9583C9F2DBD8C8300F43550 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		B9583CCA2DBD935300F43550 /* ScreenScribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScreenScribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,6 +99,23 @@
 		C1000004000000000000000B /* PromptListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptListView.swift; sourceTree = "<group>"; };
 		C1000006000000000000000B /* ScreenCaptureBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureBackend.swift; sourceTree = "<group>"; };
 		C128894D5D084D2FBAADA65C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D21000000000000000000001 /* APITransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/APITransport.swift; sourceTree = SOURCE_ROOT; };
+		D21000000000000000000002 /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/CredentialStore.swift; sourceTree = SOURCE_ROOT; };
+		D21000000000000000000003 /* MathpixProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/MathpixProvider.swift; sourceTree = SOURCE_ROOT; };
+		D21000000000000000000004 /* PhysicsSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/PhysicsSettings.swift; sourceTree = SOURCE_ROOT; };
+		D21000000000000000000005 /* PhysicsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/PhysicsSettingsView.swift; sourceTree = SOURCE_ROOT; };
+		D21000000000000000000006 /* PhysicsWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/PhysicsWorkspace.swift; sourceTree = SOURCE_ROOT; };
+		D21000000000000000000007 /* RecognitionTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/RecognitionTypes.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000020 /* OpenAICompatibleVisionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/OpenAICompatibleVisionProvider.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000021 /* RecognitionHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/RecognitionHistory.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000022 /* RecognitionHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/RecognitionHistoryView.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000028 /* SnipPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/SnipPanelView.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000029 /* LocalMathPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/LocalMathPreview.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000030 /* MathPreview */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ScreenScribe/Resources/MathPreview; sourceTree = SOURCE_ROOT; };
+D21000000000000000000031 /* MathpixUsageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/MathpixUsageService.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000032 /* MathpixUsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/MathpixUsageStore.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000033 /* MathpixCreditEstimate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/MathpixCreditEstimate.swift; sourceTree = SOURCE_ROOT; };
+D21000000000000000000034 /* MathpixCreditStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenScribe/Sources/Physics/MathpixCreditStore.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -159,6 +191,23 @@
 				B9583C8B2DBD8C8300F43550 /* Services */,
 				B9583C902DBD8C8300F43550 /* Settings */,
 				B9583C912DBD8C8300F43550 /* App.swift */,
+D21000000000000000000030,
+D21000000000000000000029,
+D21000000000000000000032,
+D21000000000000000000033,
+D21000000000000000000034,
+D21000000000000000000031,
+D21000000000000000000028,
+D21000000000000000000022,
+D21000000000000000000021,
+D21000000000000000000020,
+				D21000000000000000000007 /* RecognitionTypes.swift */,
+				D21000000000000000000006 /* PhysicsWorkspace.swift */,
+				D21000000000000000000005 /* PhysicsSettingsView.swift */,
+				D21000000000000000000004 /* PhysicsSettings.swift */,
+				D21000000000000000000003 /* MathpixProvider.swift */,
+				D21000000000000000000002 /* CredentialStore.swift */,
+				D21000000000000000000001 /* APITransport.swift */,
 				B9583C922DBD8C8300F43550 /* Config.swift */,
 				B9583C932DBD8C8300F43550 /* Detector.swift */,
 				B9583C942DBD8C8300F43550 /* Logger.swift */,
@@ -177,7 +226,6 @@
 				B9583C992DBD8C8300F43550 /* Info.plist */,
 				B9583C9A2DBD8C8300F43550 /* main.swift */,
 				B9583C9B2DBD8C8300F43550 /* Screen Capture.aif */,
-				B9583C9C2DBD8C8300F43550 /* Secrets.plist */,
 			);
 			path = ScreenScribe;
 			sourceTree = "<group>";
@@ -261,8 +309,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+D22000000000000000000030,
 				F5B0C7647A784F30BB1B71D9 /* Assets.xcassets in Resources */,
-				B9583CA72DBD8C8300F43550 /* Secrets.plist in Resources */,
 				B9583CA82DBD8C8300F43550 /* Build.xcconfig in Resources */,
 				B9583CAC2DBD8C8300F43550 /* Screen Capture.aif in Resources */,
 				B9583CAE2DBD8C8300F43550 /* LICENSE in Resources */,
@@ -276,6 +324,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+D22000000000000000000029,
+D22000000000000000000032,
+D22000000000000000000033,
+D22000000000000000000034,
+D22000000000000000000031,
+D22000000000000000000028,
+D22000000000000000000022,
+D22000000000000000000021,
+D22000000000000000000020,
+				D22000000000000000000007 /* RecognitionTypes.swift in Sources */,
+				D22000000000000000000006 /* PhysicsWorkspace.swift in Sources */,
+				D22000000000000000000005 /* PhysicsSettingsView.swift in Sources */,
+				D22000000000000000000004 /* PhysicsSettings.swift in Sources */,
+				D22000000000000000000003 /* MathpixProvider.swift in Sources */,
+				D22000000000000000000002 /* CredentialStore.swift in Sources */,
+				D22000000000000000000001 /* APITransport.swift in Sources */,
 				B9583CAF2DBD8C8300F43550 /* Bundle+Extension.swift in Sources */,
 				B9583CB02DBD8C8300F43550 /* NSMenuItem+Extension.swift in Sources */,
 				B9583CB12DBD8C8300F43550 /* NSControl+Extension.swift in Sources */,
@@ -456,8 +520,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(inherited)";
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = LC98XFTQS7;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
+                ENABLE_APP_SANDBOX = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ScreenScribe/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScreenScribe;
@@ -491,8 +556,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = "$(inherited)";
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = LC98XFTQS7;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
+                ENABLE_APP_SANDBOX = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ScreenScribe/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScreenScribe;

@@ -34,18 +34,22 @@ struct ScreenCaptureStrategyTests {
             ScreenCaptureService.activeBackend(
                 for: OperatingSystemVersion(majorVersion: 15, minorVersion: 2, patchVersion: 0)
             ),
-            .legacyScreencaptureCLI,
-            "macOS 15.2 should keep using Apple's interactive screencapture backend"
+            .nativeRegionSelection,
+            "macOS 15.2 should capture natively under the app's own permission identity"
         )
 
         expectEqual(
             ScreenCaptureService.activeBackend(
                 for: OperatingSystemVersion(majorVersion: 26, minorVersion: 2, patchVersion: 0)
             ),
-            .legacyScreencaptureCLI,
-            "Modern macOS releases should keep using Apple's interactive screencapture backend"
+            .nativeRegionSelection,
+            "Modern macOS should use native region selection and ScreenCaptureKit"
         )
 
+        let rect = ScreenCaptureCoordinates.quartzRect(fromAppKit: CGRect(x: -500, y: 200, width: 300, height: 150), primaryDisplayHeight: 900)
+        guard rect == CGRect(x: -500, y: 550, width: 300, height: 150) else { fatalError("global coordinate conversion") }
+        let above = ScreenCaptureCoordinates.quartzRect(fromAppKit: CGRect(x: 20, y: 950, width: 100, height: 100), primaryDisplayHeight: 900)
+        guard above.minY == -150 else { fatalError("display above the primary keeps negative Quartz coordinate") }
         print("ScreenCaptureStrategyTests passed")
     }
 }

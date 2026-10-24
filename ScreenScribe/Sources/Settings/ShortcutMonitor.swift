@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import Combine
 
 /// Actions that can be triggered by keyboard shortcuts
 enum ShortcutAction {
@@ -8,7 +9,8 @@ enum ShortcutAction {
 }
 
 @MainActor
-final class ShortcutMonitor {
+final class ShortcutMonitor: ObservableObject {
+    @Published private(set) var registrationErrors: [String] = []
     static let shared = ShortcutMonitor()
 
     private var textHotKeyRef: EventHotKeyRef?
@@ -47,6 +49,8 @@ final class ShortcutMonitor {
             
             if let key = keyEquivalentString(for: keyCode) {
                 desc += key
+            } else {
+                desc += keyEquivalentCharacter.uppercased()
             }
             return desc
         }
@@ -218,34 +222,21 @@ final class ShortcutMonitor {
     }
 
     private func registerHotKeys() {
-        if let textShortcut = textShortcut {
-            if let currentRef = textHotKeyRef {
-                UnregisterEventHotKey(currentRef)
+        stopMonitoring()
+        registrationErrors = []
+        for (shortcut, id, label) in [(textShortcut, textHotKeyID, "离线文字"), (defaultPromptShortcut, defaultPromptHotKeyID, "科研识别")] {
+            guard let shortcut else { continue }
+            guard shortcut.carbonModifiers != 0, !shortcut.keyEquivalentCharacter.isEmpty else {
+                registrationErrors.append("\(label)：请使用带修饰键的字母或数字。"); continue
             }
-
             var ref: EventHotKeyRef?
-            RegisterEventHotKey(UInt32(textShortcut.keyCode),
-                              textShortcut.carbonModifiers,
-                              textHotKeyID,
-                              GetApplicationEventTarget(),
-                              0,
-                              &ref)
-            textHotKeyRef = ref
-        }
-
-        if let defaultPromptShortcut = defaultPromptShortcut {
-            if let currentRef = defaultPromptHotKeyRef {
-                UnregisterEventHotKey(currentRef)
+            let status = RegisterEventHotKey(UInt32(shortcut.keyCode), shortcut.carbonModifiers, id,
+                                             GetApplicationEventTarget(), 0, &ref)
+            if status == noErr {
+                if id.id == 1 { textHotKeyRef = ref } else { defaultPromptHotKeyRef = ref }
+            } else {
+                registrationErrors.append("\(label)：快捷键注册失败（\(status)），可能已被占用，请更换组合。")
             }
-
-            var ref: EventHotKeyRef?
-            RegisterEventHotKey(UInt32(defaultPromptShortcut.keyCode),
-                              defaultPromptShortcut.carbonModifiers,
-                              defaultPromptHotKeyID,
-                              GetApplicationEventTarget(),
-                              0,
-                              &ref)
-            defaultPromptHotKeyRef = ref
         }
     }
 

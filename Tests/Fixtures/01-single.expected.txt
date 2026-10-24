@@ -1,0 +1,1 @@
+E=mc^2,\qquad x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}

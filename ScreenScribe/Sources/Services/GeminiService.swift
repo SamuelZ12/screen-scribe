@@ -40,7 +40,7 @@ struct GeminiService {
     private let maxRetries: Int
     private let initialDelay: UInt64
     
-    init(session: URLSession = .shared, maxRetries: Int = 3, initialDelay: UInt64 = 1_000_000_000) {
+    init(session: URLSession = APITransport.session, maxRetries: Int = 3, initialDelay: UInt64 = 1_000_000_000) {
         self.session = session
         self.maxRetries = maxRetries
         self.initialDelay = initialDelay
@@ -77,12 +77,13 @@ struct GeminiService {
             ]
         ]
 
-        guard let url = URL(string: "\(Config.geminiEndpoint(for: model))?key=\(apiKey)") else {
+        guard let url = URL(string: Config.geminiEndpoint(for: model)) else {
             throw GeminiAPIError.invalidResponse
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         return request
@@ -122,8 +123,8 @@ struct GeminiService {
                 if httpResponse.statusCode != 200 {
                     if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let error = errorJson["error"] as? [String: Any],
-                       let message = error["message"] as? String {
-                        throw GeminiAPIError.apiError(message)
+                       error["message"] is String {
+                        throw GeminiAPIError.apiError("HTTP \(httpResponse.statusCode)")
                     } else {
                         throw GeminiAPIError.apiError("API request failed with status \(httpResponse.statusCode)")
                     }
@@ -147,7 +148,7 @@ struct GeminiService {
                     retryCount += 1
                     try await Task.sleep(nanoseconds: initialDelay * UInt64(retryCount))
                 } else {
-                    throw GeminiAPIError.networkError(error)
+                    throw GeminiAPIError.networkError(URLError(.cannotConnectToHost))
                 }
             }
         }

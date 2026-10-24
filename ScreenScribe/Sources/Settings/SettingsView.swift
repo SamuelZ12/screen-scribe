@@ -45,6 +45,7 @@ struct ShortcutRecorderButton: View {
             .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
+        .onDisappear { eventMonitor = nil; isRecording = false }
     }
 
     private func startRecording() {
@@ -57,6 +58,8 @@ struct ShortcutRecorderButton: View {
                    event.keyCode != kVK_Option &&
                    event.keyCode != kVK_Command &&
                    event.keyCode != kVK_Function {
+                    if event.keyCode == 53 { isRecording = false; self.eventMonitor = nil; return nil }
+                    guard !event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return nil }
                     let newShortcut = ShortcutMonitor.KeyboardShortcut(
                         keyCode: Int(event.keyCode),
                         modifiers: event.modifierFlags
@@ -74,9 +77,11 @@ struct ShortcutRecorderButton: View {
     }
 }
 
-struct SettingsView: View {
+struct LegacySettingsView: View {
     @StateObject private var settings = SettingsManager.shared
-    @AppStorage("geminiAPIKey") private var apiKeyInput: String = ""
+    @ObservedObject private var shortcuts = ShortcutMonitor.shared
+    @State private var apiKeyInput = ""
+    @State private var credentialMessage = ""
     @State private var isValidAPIKey: Bool = false
 
     private func validateAPIKey(_ key: String) -> Bool {
@@ -87,6 +92,11 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
+                HStack {
+                    Button("保存 Gemini 密钥") { Task { do { try await CredentialStore.saveAsync(apiKeyInput, account: "gemini.key"); credentialMessage = "已保存到钥匙串" } catch { credentialMessage = error.localizedDescription } } }
+                    Button("删除 Gemini 密钥") { Task { do { try await CredentialStore.deleteAsync("gemini.key"); apiKeyInput = ""; credentialMessage = "已删除" } catch { credentialMessage = error.localizedDescription } } }
+                }
+                Text(credentialMessage)
                 VStack(alignment: .leading) {
                     LabeledContent("Gemini API Key:") {
                         HStack {
@@ -145,7 +155,8 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Text Shortcut:") {
+                ForEach(shortcuts.registrationErrors, id: \.self) { Text($0).foregroundStyle(.red) }
+                LabeledContent("离线文字:") {
                     ShortcutRecorderButton(
                         label: "Text Shortcut",
                         shortcut: Binding(
@@ -156,7 +167,7 @@ struct SettingsView: View {
                     .frame(width: 200)
                 }
 
-                LabeledContent("Default Prompt:") {
+                LabeledContent("科研截图识别:") {
                     ShortcutRecorderButton(
                         label: "Default Prompt Shortcut",
                         shortcut: Binding(
@@ -169,7 +180,7 @@ struct SettingsView: View {
             } header: {
                 Text("Keyboard Shortcuts")
             } footer: {
-                Text("Text uses offline Vision OCR. Default Prompt uses your selected AI prompt.")
+                Text("科研识别快捷键使用所选服务与任务模式。默认 ⌘⇧L；离线文字默认 ⌘⇧T。")
                     .foregroundStyle(.secondary)
             }
 
@@ -184,13 +195,27 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500, height: 700)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            isValidAPIKey = validateAPIKey(apiKeyInput)
+            Task {
+                apiKeyInput = (try? await CredentialStore.readAsync("gemini.key")) ?? ""
+                isValidAPIKey = validateAPIKey(apiKeyInput)
+            }
         }
     }
 }
 
-#Preview {
+struct SettingsViewPreview1: PreviewProvider {
+    static var previews: some View {
     SettingsView()
+    }
+}
+
+struct SettingsView: View {
+    var body: some View {
+        TabView {
+            PhysicsSettingsView().tabItem { Text("科研识别") }
+            LegacySettingsView().tabItem { Text("快捷键与原有工具") }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }

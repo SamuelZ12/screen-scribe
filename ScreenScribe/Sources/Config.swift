@@ -1,32 +1,5 @@
 import Foundation
 
-/// Manages loading and accessing configuration values from Secrets.plist
-
-struct ConfigurationManager {
-    @MainActor
-    static let shared = ConfigurationManager()
-    
-    private let secrets: [String: String]
-    
-    private init() {
-        if let path = Bundle.main.path(forResource: "Secrets", ofType: "plist"),
-           let dict = NSDictionary(contentsOfFile: path) as? [String: String] {
-            self.secrets = dict
-        } else {
-            print("Error: Could not load Secrets.plist. Please ensure it exists with a GEMINI_API_KEY entry.")
-            self.secrets = [:]
-        }
-    }
-    
-    func getValue(for key: String) -> String? {
-        return secrets[key]
-    }
-    
-    func value(for key: String) -> String? {
-        return getValue(for: key)
-    }
-}
-
 /// Model structure for Gemini AI models
 struct GeminiModel: Identifiable {
     let id: String      // raw id used in the URL
@@ -38,15 +11,6 @@ struct GeminiModel: Identifiable {
 enum Config {
     static let defaultGeminiModelID = "gemini-3.7-flash"
 
-    /// The Gemini API key loaded from Keychain or Secrets.plist
-    @MainActor
-    static var geminiAPIKey: String {
-        if let key = UserDefaults.standard.string(forKey: "geminiAPIKey"), !key.isEmpty {
-            return key
-        }
-        return ConfigurationManager.shared.value(for: "GEMINI_API_KEY") ?? ""
-    }
-    
     /// Available Gemini models to choose from
     static let availableGeminiModels: [GeminiModel] = [
         .init(id: "gemini-3.7-flash", label: "Gemini 3.7 Flash", note: "Best balance"),

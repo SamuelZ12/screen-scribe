@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-26
 
     steps:
       - name: Checkout repository
@@ -22,17 +22,6 @@ jobs:
 
       - name: Select latest stable Xcode
         run: scripts/select-latest-stable-xcode.sh
-
-      - name: Create placeholder Secrets.plist
-        run: |
-          cat > ScreenScribe/Secrets.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-          </dict>
-          </plist>
-          EOF
 
       - name: Run standalone regression checks
         run: scripts/run-standalone-tests.sh

@@ -1,216 +1,29 @@
-name: Build and Release
+name: Verify release source
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g., 1.3.0)'
-        required: true
-        type: string
-      prerelease:
-        description: 'Mark as pre-release'
-        required: false
-        default: false
-        type: boolean
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-release:
-    runs-on: macos-14
-
-    permissions:
-      contents: write
-
+  verify:
+    runs-on: macos-26
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-
+          persist-credentials: false
       - name: Select latest stable Xcode
         run: scripts/select-latest-stable-xcode.sh
-
-      - name: Extract version from tag
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Use manual version input
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-
-      - name: Create placeholder Secrets.plist
-        run: |
-          cat > ScreenScribe/Secrets.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-          </dict>
-          </plist>
-          EOF
-
       - name: Run standalone regression checks
         run: scripts/run-standalone-tests.sh
-
-      - name: Validate release signing configuration
-        env:
-          RELEASE_SIGNING_CERT_P12_BASE64: ${{ secrets.RELEASE_SIGNING_CERT_P12_BASE64 }}
-          RELEASE_SIGNING_CERT_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_CERT_P12_PASSWORD }}
-          RELEASE_SIGNING_IDENTITY: ${{ secrets.RELEASE_SIGNING_IDENTITY }}
-          APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64 }}
-          APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
-          APPLE_DEVELOPER_ID_APPLICATION_IDENTITY: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_IDENTITY }}
+      - name: Verify Release source builds
         run: |
-          export RELEASE_SIGNING_CERT_P12_BASE64="${RELEASE_SIGNING_CERT_P12_BASE64:-${APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64:-}}"
-          export RELEASE_SIGNING_CERT_P12_PASSWORD="${RELEASE_SIGNING_CERT_P12_PASSWORD:-${APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD:-}}"
-          export RELEASE_SIGNING_IDENTITY="${RELEASE_SIGNING_IDENTITY:-${APPLE_DEVELOPER_ID_APPLICATION_IDENTITY:-}}"
-
-          required_vars=(
-            RELEASE_SIGNING_CERT_P12_BASE64
-            RELEASE_SIGNING_CERT_P12_PASSWORD
-            RELEASE_SIGNING_IDENTITY
-          )
-
-          for name in "${required_vars[@]}"; do
-            if [ -z "${!name:-}" ]; then
-              echo "Missing required release signing secret: $name" >&2
-              exit 1
-            fi
-          done
-
-      - name: Import release signing certificate
-        env:
-          RELEASE_SIGNING_CERT_P12_BASE64: ${{ secrets.RELEASE_SIGNING_CERT_P12_BASE64 }}
-          RELEASE_SIGNING_CERT_P12_PASSWORD: ${{ secrets.RELEASE_SIGNING_CERT_P12_PASSWORD }}
-          APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64 }}
-          APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
-        run: |
-          export RELEASE_SIGNING_CERT_P12_BASE64="${RELEASE_SIGNING_CERT_P12_BASE64:-${APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64:-}}"
-          export RELEASE_SIGNING_CERT_P12_PASSWORD="${RELEASE_SIGNING_CERT_P12_PASSWORD:-${APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD:-}}"
-
-          CERT_PATH="$RUNNER_TEMP/release-signing-certificate.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/release-signing.keychain-db"
-          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-
-          echo "$RELEASE_SIGNING_CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" \
-            -k "$KEYCHAIN_PATH" \
-            -P "$RELEASE_SIGNING_CERT_P12_PASSWORD" \
-            -T /usr/bin/codesign \
-            -T /usr/bin/security \
-            -T /usr/bin/xcodebuild
-          security list-keychains -d user -s "$KEYCHAIN_PATH"
-          security default-keychain -d user -s "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-
-          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
-
-      - name: Build for Release
-        env:
-          RELEASE_SIGNING_IDENTITY: ${{ secrets.RELEASE_SIGNING_IDENTITY }}
-          APPLE_DEVELOPER_ID_APPLICATION_IDENTITY: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_IDENTITY }}
-        run: |
-          export RELEASE_SIGNING_IDENTITY="${RELEASE_SIGNING_IDENTITY:-${APPLE_DEVELOPER_ID_APPLICATION_IDENTITY:-}}"
-
-          xcodebuild \
-            -project ScreenScribe.xcodeproj \
-            -scheme ScreenScribe \
-            -configuration Release \
-            -derivedDataPath build \
+          xcodebuild -project ScreenScribe.xcodeproj -scheme ScreenScribe \
+            -configuration Release -derivedDataPath build \
             -destination 'generic/platform=macOS' \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="$RELEASE_SIGNING_IDENTITY" \
-            DEVELOPMENT_TEAM="" \
-            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
-            build
-
-      - name: Verify build output
-        run: |
-          APP_PATH="build/Build/Products/Release/ScreenScribe.app"
-          if [ ! -d "$APP_PATH" ]; then
-            echo "Error: App not found at $APP_PATH"
-            ls -la build/Build/Products/Release/ || echo "Release directory not found"
-            exit 1
-          fi
-
-          scripts/verify-release-signing.sh "$APP_PATH"
-          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-
-          echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
-          echo "Build successful: $APP_PATH"
-
-      - name: Create DMG
-        run: |
-          DMG_NAME="ScreenScribe-${{ env.VERSION }}.dmg"
-
-          mkdir -p dmg_contents
-          cp -R "${{ env.APP_PATH }}" dmg_contents/
-          ln -s /Applications dmg_contents/Applications
-
-          hdiutil create -volname "ScreenScribe ${{ env.VERSION }}" \
-            -srcfolder dmg_contents \
-            -ov -format UDZO \
-            "$DMG_NAME"
-
-          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
-
-      - name: Generate checksum
-        run: |
-          shasum -a 256 "${{ env.DMG_NAME }}" > "${{ env.DMG_NAME }}.sha256"
-
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PRERELEASE_INPUT: ${{ github.event.inputs.prerelease }}
-        run: |
-          release_notes=$(cat <<EOF
-          ## Installation
-
-          1. Download \`${DMG_NAME}\`
-          2. Open the DMG file
-          3. Drag ScreenScribe to your Applications folder
-          4. See [README](https://github.com/${GITHUB_REPOSITORY}#installation--usage) for first-run instructions
-
-          **Note:** This app is not notarized. macOS Gatekeeper will show a warning on first launch. Right-click the app and select "Open" to bypass the warning.
-
-          ---
-
-          **SHA-256 Checksum:** See \`${DMG_NAME}.sha256\`
-          EOF
-          )
-
-          prerelease_args=()
-          if [[ "$PRERELEASE_INPUT" == "true" ]]; then
-            prerelease_args=(--prerelease)
-          fi
-
-          target_args=()
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            target_args=(--target "$GITHUB_SHA")
-          fi
-
-          gh release create "v${VERSION}" \
-            "${DMG_NAME}" \
-            "${DMG_NAME}.sha256" \
-            --title "ScreenScribe v${VERSION}" \
-            --notes "${release_notes}" \
-            --generate-notes \
-            "${prerelease_args[@]}" \
-            "${target_args[@]}"
-
-      - name: Cleanup signing keychain
-        if: always()
-        run: |
-          if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "$KEYCHAIN_PATH" ]; then
-            security delete-keychain "$KEYCHAIN_PATH"
-          fi
+            CODE_SIGNING_ALLOWED=NO DEVELOPMENT_TEAM="" build
+      # Release assets are packaged and verified on the maintainer's Mac.
+      # CI has no signing identity and cannot replace published assets.

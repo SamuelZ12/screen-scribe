@@ -22,6 +22,8 @@ struct GeminiServiceRequestTests {
             expect(request.url?.path.contains("/models/gemini-3.7-flash:generateContent") == true,
                    "Requests should use the selected Gemini 3.7 Flash model")
             expect(request.httpMethod == "POST", "Requests should use POST")
+            expect(request.url?.query == nil, "Credentials must not be in URL")
+            expect(request.value(forHTTPHeaderField: "x-goog-api-key") == "test-api-key", "Header authentication")
 
             guard let body = request.httpBody,
                   let payload = try JSONSerialization.jsonObject(with: body) as? [String: Any],

@@ -56,6 +56,7 @@ DerivedData/
 *.swo
 
 # API Keys and Secrets
+.local-signing/
 *.env
 .env
 .env.local
@@ -73,3 +74,14 @@ TextGrabber2/Secrets.plist
 
 _antigravity/
 .agent/
+Local.xcconfig
+
+# Local Python tooling cache
+__pycache__/
+
+# Machine-specific audit and validation records (kept locally)
+docs/OPERATION-AUDIT.md
+docs/TEST-RESULTS.md
+docs/OLD-BUILD-CLEANUP.json
+docs/XPC-SYNTHETIC-RESULTS.json
+docs/validation/

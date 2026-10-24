@@ -25,8 +25,14 @@ struct ScreenCaptureStrategy {
     static func preferred(
         for version: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion
     ) -> ScreenCaptureBackend {
-        _ = version
+        if version.majorVersion > 15 || (version.majorVersion == 15 && version.minorVersion >= 2) { return .nativeRegionSelection }
         return .legacyScreencaptureCLI
+    }
+}
+
+struct ScreenCaptureCoordinates {
+    static func quartzRect(fromAppKit rect: CGRect, primaryDisplayHeight: CGFloat) -> CGRect {
+        CGRect(x: rect.minX, y: primaryDisplayHeight - rect.maxY, width: rect.width, height: rect.height)
     }
 }
 
@@ -34,6 +40,12 @@ struct ScreenCaptureStrategy {
 @MainActor
 final class ScreenCaptureService {
     private let selector = ScreenRegionSelector()
+    private let permissionCheck: () -> Bool
+    private var selecting = false
+    private(set) var lastError: String?
+    init(permissionCheck: @escaping () -> Bool = CGPreflightScreenCaptureAccess) {
+        self.permissionCheck = permissionCheck
+    }
 
     static func activeBackend(
         for version: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion
@@ -42,6 +54,20 @@ final class ScreenCaptureService {
     }
 
     func captureSelectionImage() async -> NSImage? {
+        guard !selecting else { return nil }
+        // The user explicitly requested no further permission prompts. Calling
+        // capture APIs with an unconfirmed build can both prompt and return only
+        // wallpaper. Never upload that partial result as a successful screenshot.
+        guard permissionCheck() else {
+            lastError = "系统尚未确认此应用的录屏授权。请在设置中点击“启用直接框选”。若 ScreenScribe 已开启，请移除旧记录，再添加“在 Finder 中定位此应用”显示的版本，并按系统提示重启。应用不会在后台反复申请。"
+            return nil
+        }
+        selecting = true; lastError = nil
+        // Hide all our document/result/settings windows before invoking Apple's selector.
+        let visible = NSApp.windows.filter { $0.isVisible && $0.level == .normal }
+        visible.forEach { $0.orderOut(nil) }
+        defer { selecting = false; visible.forEach { $0.orderFront(nil) } }
+        try? await Task.sleep(nanoseconds: 200_000_000)
         switch Self.activeBackend() {
         case .legacyScreencaptureCLI:
             return await captureWithLegacyCLI()
@@ -64,13 +90,14 @@ final class ScreenCaptureService {
         try? await Task.sleep(nanoseconds: 75_000_000)
 
         do {
-            let image = try await captureImage(in: rect)
+            let captureRect = ScreenCaptureCoordinates.quartzRect(fromAppKit: rect, primaryDisplayHeight: CGDisplayBounds(CGMainDisplayID()).height)
+            let image = try await captureImage(in: captureRect)
             return NSImage(
                 cgImage: image,
                 size: NSSize(width: image.width, height: image.height)
             )
         } catch {
-            Logger.log(.error, "Native region capture failed: \(error.localizedDescription)")
+            lastError = "系统未能完成所选区域截图（ScreenCaptureKit）。这不是预检查结论；请核对当前运行版本与已授权应用的路径是否一致。"
             return nil
         }
     }
@@ -84,30 +111,38 @@ final class ScreenCaptureService {
             let task = Process()
             task.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
             task.arguments = ScreenCaptureCLIArguments.selectionArguments(outputURL: outputURL)
+            let errors = Pipe()
+            task.standardError = errors
             task.terminationHandler = { process in
+                let diagnostic = String(data: errors.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
                 DispatchQueue.main.async {
                     defer {
                         try? FileManager.default.removeItem(at: outputURL)
                     }
 
                     guard process.terminationStatus == 0 else {
+                        // Escape cancellation is silent. Only an actual helper failure is an error.
+                        if !diagnostic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            self.lastError = "系统截图未完成（退出码 \(process.terminationStatus)）。请重试；若系统拒绝访问，请核对设置中的应用路径与当前版本。"
+                        }
                         continuation.resume(returning: nil)
                         return
                     }
 
-                    guard let data = try? Data(contentsOf: outputURL) else {
+                    guard let data = try? Data(contentsOf: outputURL), let image = NSImage(data: data) else {
+                        self.lastError = "系统未生成可读取的截图，请重新框选。"
                         continuation.resume(returning: nil)
                         return
                     }
 
-                    continuation.resume(returning: NSImage(data: data))
+                    continuation.resume(returning: image)
                 }
             }
 
             do {
                 try task.run()
             } catch {
-                Logger.log(.error, "Legacy screencapture launch failed: \(error.localizedDescription)")
+                lastError = "无法启动系统截图工具。请检查本机 /usr/sbin/screencapture 是否可用。"
                 try? FileManager.default.removeItem(at: outputURL)
                 continuation.resume(returning: nil)
             }
@@ -117,18 +152,37 @@ final class ScreenCaptureService {
     @available(macOS 15.2, *)
     private func captureImage(in rect: CGRect) async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
-            SCScreenshotManager.captureImage(in: rect) { image, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
+            if #available(macOS 26.0, *) {
+                let configuration = SCScreenshotConfiguration()
+                configuration.showsCursor = false
+                configuration.dynamicRange = .sdr
+                SCScreenshotManager.captureScreenshot(rect: rect, configuration: configuration) { output, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
 
-                guard let image else {
-                    continuation.resume(throwing: ScreenCaptureServiceError.missingImage)
-                    return
-                }
+                    guard let image = output?.sdrImage else {
+                        continuation.resume(throwing: ScreenCaptureServiceError.missingImage)
+                        return
+                    }
 
-                continuation.resume(returning: image)
+                    continuation.resume(returning: image)
+                }
+            } else {
+                SCScreenshotManager.captureImage(in: rect) { image, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
+
+                    guard let image else {
+                        continuation.resume(throwing: ScreenCaptureServiceError.missingImage)
+                        return
+                    }
+
+                    continuation.resume(returning: image)
+                }
             }
         }
     }
@@ -226,7 +280,8 @@ private final class ScreenRegionSelector {
 
         window.contentView = selectionView
 
-        NSApp.activate(ignoringOtherApps: true)
+        // A nonactivating panel stays on the user's current Space. Activating
+        // the app here can switch away from a full-screen paper to the desktop.
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(selectionView)
     }
@@ -243,22 +298,25 @@ private final class ScreenRegionSelector {
     }
 }
 
-private final class ScreenRegionSelectionWindow: NSWindow, RegionSelectionOverlayWindow {
+private final class ScreenRegionSelectionWindow: NSPanel, RegionSelectionOverlayWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
     init(frame: CGRect) {
         super.init(
             contentRect: frame,
-            styleMask: .borderless,
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
 
+        title = "ScreenScribe · 选择截图区域"
         isOpaque = false
         backgroundColor = .clear
         animationBehavior = .none
         hasShadow = false
+        hidesOnDeactivate = false
+        becomesKeyOnlyIfNeeded = false
         level = .screenSaver
         collectionBehavior = [
             .canJoinAllSpaces,

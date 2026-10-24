@@ -57,14 +57,14 @@ final class SettingsManager: ObservableObject {
         if textShortcut == nil {
             textShortcut = ShortcutMonitor.KeyboardShortcut(
                 keyCode: kVK_ANSI_T,
-                modifiers: [.command]
+                modifiers: [.command, .shift]
             )
         }
 
         if defaultPromptShortcut == nil {
             defaultPromptShortcut = ShortcutMonitor.KeyboardShortcut(
                 keyCode: kVK_ANSI_L,
-                modifiers: [.command]
+                modifiers: [.command, .shift]
             )
         }
 

@@ -1,0 +1,1 @@
+\int_0^1\!\mathrm{d}z\,\Theta(1-z-\delta)\left[\frac{\ln(1-z)}{1-z}\right]_{+}\sum_{n=0}^{\infty}\frac{\hat{T}^{\mu\nu}_{n}\,\slashed{p}}{n!}\delta(x-z)\quad\begin{pmatrix}\alpha&\beta\\\gamma&\Delta\end{pmatrix}

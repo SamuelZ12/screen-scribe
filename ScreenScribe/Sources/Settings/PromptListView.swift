@@ -150,7 +150,9 @@ struct PromptListView: View {
     }
 }
 
-#Preview {
+struct PromptListViewPreview1: PreviewProvider {
+    static var previews: some View {
     PromptListView()
         .frame(width: 400, height: 350)
+    }
 }

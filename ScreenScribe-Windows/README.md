@@ -2,7 +2,7 @@
 
 这是在独立目录中实现的 Windows 移植版，面向普通 Intel / AMD 电脑上的 **Windows 10 / 11 x64**。沿用 Mac 版的单面板交互：框选公式，识别为可编辑的 LaTeX，原图、预览和复制格式放在一起。父目录中的 Mac 源码、固定签名、凭据与构建保持原样。
 
-已生成约 108 MB 的安装包：[`ScreenScribe-Windows-0.1.0-x64-Setup.exe`](dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe)。目前已完成自动测试、Mac 上的隔离界面桥接检查和 Windows 包静态检查，**Windows 实机安装、DPAPI、截图和界面验收尚未完成**。当前产物保存在本机，尚未推送远端或发布 Windows Release。
+安装包：[`ScreenScribe-Windows-0.1.0-x64-Setup.exe`](dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe)（约 108 MiB）。该文件来自已通过构建、静态检查、静默安装、安装后原生自检和卸载的 [Windows CI](https://github.com/pionplusminus/screen-scribe/actions/runs/40109506792)，[SHA-256 校验文件](dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe.sha256)随包提供。源码位于独立分支 [`codex/windows-v0.1`](https://github.com/pionplusminus/screen-scribe/tree/codex/windows-v0.1/ScreenScribe-Windows)。Mac 的 `main` 和既有 Release 未改动，尚未发布 Windows Release。
 
 ## 使用
 
@@ -31,7 +31,7 @@ Mathpix 的官方 usage 查询提供图片用量，不能直接给出账户实�
 
 ## 开发与构建
 
-需要 Node.js 22 或更新版本及 npm。正式程序仅允许在 Windows 运行；Mac 上可使用隔离演示或 smoke 模式。进入此独立目录后执行：
+需要 Node.js 22.12.0 或更新版本及 npm。正式程序仅允许在 Windows 运行；Mac 上可使用隔离演示或 smoke 模式。进入此独立目录后执行：
 
 ```powershell
 npm ci
@@ -47,7 +47,7 @@ npm run dist:win
 - `npm run demo`：打开隔离演示界面；示例源码不是一次真实识别结果。
 - `node scripts/verify-package.cjs`：静态检查 `dist/win-unpacked` 的 PE 架构、ASAR 资源、隔离设置与私有文件排除情况；不能替代 Windows 实机验证。
 
-本次验证记录为：63 项测试通过；Mac Electron 的 `--smoke-test` 桥接通过；x64 NSIS 安装包构建成功；145 项包静态检查通过，报告仍明确标记 `windowsRuntimeVerified=false`。这些结果不证明 Windows GUI、DPAPI、混合 DPI 多屏截图或安装/卸载已实机通过。
+本机 68 项自动测试通过；Windows CI 为 67 项通过、1 项符号链接测试跳过。CI 使用 Windows Server 2025（10.0.26100）x64，通过 151 项包静态检查，并在源码运行和安装后副本各通过 14 项原生自检：DPAPI 保存后重新读取、删除、全局快捷键、渲染器桥接和自有彩色测试窗的桌面截图裁剪对照。完整记录及安装包 SHA-256 见 [测试记录](docs/TEST-RESULTS.md)。这不代表 Windows 10 与 11 客户端均已人工实测；正式选区界面拖动、托盘操作、多屏混合 DPI 和真实 API 识别仍需在目标电脑验证。
 
 ## 数据与安全边界
 

@@ -30,6 +30,7 @@ flowchart TB
 | `src/core/controller.cjs` | 识别编排、请求取消、代次隔离、历史编辑和脱敏状态快照 |
 | `src/core/settings.cjs` | 设置白名单、快捷键规范化、字段验证 |
 | `src/core/credentials.cjs` | 加密凭据读写、服务地址隔离、密文校验 |
+| `src/core/os-crypto.cjs` | 统一 Electron 系统加密接口，提取异步解密对象中的 `result` 字段 |
 | `src/core/history.cjs` | 最多 50 条 / 25 MB 历史、可选原图、源码编辑与清理 |
 | `src/core/credit.cjs` | 整数金额、按账户隔离的本地扣减、五次校准与跨月处理 |
 | `src/core/storage.cjs` | 限定文件名、原子 JSON 写入与安全错误信息 |
@@ -58,7 +59,7 @@ flowchart TB
 
 正式 Windows 配置目录为 `%APPDATA%\ScreenScribe-Windows`。Mac 上的演示与 smoke 使用独立临时路径及内存存储，不访问成熟 Mac 版的数据。
 
-Mathpix 保存 App ID 与 API Key，视觉模型按规范化 HTTPS 地址隔离密钥。`CredentialVault` 通过主进程注入的 Electron `safeStorage` 适配器执行加解密，在 Windows 下由 DPAPI 保护，再将密文 Base64 写入 `credentials.json`；没有明文回退。保存成功后清空界面输入，普通设置、历史、额度记录和日志不存 API Key。
+Mathpix 保存 App ID 与 API Key，视觉模型按规范化 HTTPS 地址隔离密钥。`CredentialVault` 通过主进程注入的 Electron `safeStorage` 适配器执行加解密，在 Windows 下由 DPAPI 保护，再将密文 Base64 写入 `credentials.json`；没有明文回退。`os-crypto.cjs` 统一处理同步接口及 Electron 45 异步解密返回的 `{ result, shouldReEncrypt }` 对象，凭据库只接收解密后的字符串。保存成功后清空界面输入，普通设置、历史、额度记录和日志不存 API Key。
 
 DPAPI 与 Windows 登录用户相关，主要防护其他账户或离线直接读取密文的情况；**不能保证防住同一登录用户下的所有进程，也不防已被控制的用户会话**。应用使用凭据时仍需在进程内存中解密。历史源码、可选原图和 Billing 快照以普通本机数据保存，应按这些内容的敏感性管理账户与备份。
 
@@ -84,6 +85,10 @@ dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe
 
 安装器按当前用户安装，`asInvoker`、`perMachine: false`、`allowElevation: false`，无需管理员权限。当前包未使用代码签名证书，构建命令禁止自动发布。
 
-截至本次实现，已具备 63 项自动测试通过、Mac Electron 隔离 smoke 桥接通过、约 108 MB 的 x64 NSIS 构建产物及 145 项包静态检查通过的证据。静态报告明确保留 `windowsRuntimeVerified=false`。Mac smoke 不截图、不访问真实凭据、不联网，不能证明 Windows 上的 DPAPI、GUI、真实识别、混合缩放多屏截图或安装/卸载运行正确。
+本机 68 项自动测试通过；Windows CI 67 项通过、1 项符号链接测试跳过。原生运行环境为 Windows Server 2025（10.0.26100）x64，不能据此声称 Windows 10 与 11 客户端均已人工实测。源码位于独立分支 `codex/windows-v0.1`；Mac `main`、正式应用和既有 Release 未改动，尚未发布 Windows Release。
 
-后续 Windows 原生验收需在真实 Windows 10 / 11 x64 环境检查：当前用户安装与卸载、托盘和快捷键、各缩放屏幕框选与 Original 对照、DPAPI 凭据重启读回、本人填写凭据后的公开公式识别、取消与错误恢复，以及五次用量校准。当前目录尚未推送远端，也未发布 Windows Release。
+`--platform-self-test` 在隔离配置中检查 DPAPI 保存、重新读取与删除、全局快捷键、sandbox 渲染器与 IPC、显示器匹配，以及调用正式 `cropRect` 对自有彩色测试窗进行实际桌面截图裁剪。14 项检查已在 [Windows CI](https://github.com/pionplusminus/screen-scribe/actions/runs/40109506792) 的源码运行和安装后副本中分别通过。测试不连接真实识别账户，不读取 Mac 凭据，不上传或保存完整桌面画面。它验证原生能力与裁剪原语，没有自动操作正式选区覆盖层、鼠标拖动或托盘界面。
+
+最终 x64 NSIS 安装器取自该成功 CI：151 项包静态检查、静默安装、安装后 14 项原生自检及隔离副本卸载均通过。安装包、校验和与运行报告的索引见 [TEST-RESULTS.md](TEST-RESULTS.md)。包校验器将 ASAR 清单统一为逻辑路径，调用 ASAR 文件读取接口时使用宿主路径分隔符，兼容 Windows。静态报告中的 `windowsRuntimeVerified=false` 只描述该份静态报告的证据边界；Windows 运行证据由独立原生报告提供。Mac smoke 仅验证隔离桥接。
+
+正式选区拖动、混合缩放多屏、远程桌面和真实 Mathpix/视觉请求仍需在目标 Windows 电脑人工验证。API 测试需使用者自行填写凭据并主动触发；没有把 Mac 版真实识别证据归入 Windows 结果。

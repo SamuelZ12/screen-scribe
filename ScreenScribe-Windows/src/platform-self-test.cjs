@@ -34,7 +34,9 @@ async function run(electron){
     const image=nativeImage.createFromPath(path.join(root,'assets/test-equation.png'));
     const size=image.getSize();check('Bundled public fixture decoded',!image.isEmpty()&&size.width>0&&size.height>0);
     const display=screen.getPrimaryDisplay(),work=display.workArea;
-    win=new BrowserWindow({x:work.x+24,y:work.y+24,width:716,height:524,show:false,frame:false,thickFrame:false,resizable:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,session:local}});
+    win=new BrowserWindow({x:work.x+24,y:work.y+24,width:716,height:524,show:false,frame:false,thickFrame:false,resizable:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,backgroundThrottling:false,session:local}});
+    win.setAlwaysOnTop(true);
+    win.webContents.on('console-message',(details,_level,message)=>{const text=details.message||message||'';if(String(text).includes('NATIVE_TEST_BRIDGE_UNAVAILABLE'))report.fixtureBridgeUnavailable=true;if(String(text).includes('NATIVE_TEST_SOURCE_REJECTED'))report.fixtureSourceRejected=true;});
     let allowedURL=url;
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(event,target)=>{if(target!==allowedURL)event.preventDefault();});
     const state={version:app.getVersion(),platform:'win32',isDemo:true,settings:{provider:'mathpix',mode:'equation',visionBaseURL:'https://api.openai.com/v1',visionModel:'',captureShortcut:'Control+Shift+L',pasteShortcut:'Control+Shift+V',persistImages:false,monthlyImageLimit:0},credentialStatus:{mathpix:false,vision:false},busy:false,error:null,notice:'离线 Windows 自检 · 内置公开测试图',result:{id:'native-self-test',createdAt:new Date().toISOString(),mode:'equation',provider:'mathpix',code:String.raw`E=mc^2,\qquad x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}`,structure:'',warnings:[],confidence:null,imageDataUrl:image.toDataURL()},history:[],quota:{remaining:null,monthlyUsed:null,detail:'离线自检，未发送 API 请求。',completionRemainder:0,nextRefreshIn:5,stale:false},pinned:true,shortcutError:null};
@@ -49,15 +51,12 @@ async function run(electron){
     const renderedUI=await win.webContents.capturePage();check('Own application frame rendered',!renderedUI.isEmpty()&&renderedUI.getSize().width>500);
     // A full multicolour public pattern avoids false positives from a white
     // desktop or an unrelated white window. The pattern never leaves this PC.
-    const colours=['#e82359','#14a5e1','#e6b422','#7a3bd2'];
-    let cells='';
-    for(let y=0;y<10;y++)for(let x=0;x<10;x++)cells+=`<i style="background:${colours[(x+3*y)%4]}"></i>`;
-    const fixture=path.join(folder,'public-test-pattern.html');
-    fs.writeFileSync(fixture,`<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-screenscribe-native-test'"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}body{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}i{display:block}</style>${cells}<script nonce="screenscribe-native-test">requestAnimationFrame(()=>requestAnimationFrame(()=>window.screenScribe.getState()));</script>`);
+    const fixture=path.join(root,'assets/native-pattern.html');
     phase='load public multicolour fixture';allowedURL=pathToFileURL(fixture).href;
     await win.loadFile(fixture);win.show();win.focus();
     phase='wait for public fixture compositor frames';
     const paintDeadline=Date.now()+8000;while(!patternPaintReady&&Date.now()<paintDeadline)await new Promise(resolve=>setTimeout(resolve,40));
+    report.fixtureDiagnostics={visible:win.isVisible(),minimized:win.isMinimized(),exactURL:win.webContents.getURL()===allowedURL,protocol:win.webContents.getURL().split(':')[0]};
     check('Public test pattern painted two compositor frames',patternPaintReady);
     phase='render public multicolour fixture';
     const rendered=await win.webContents.capturePage();

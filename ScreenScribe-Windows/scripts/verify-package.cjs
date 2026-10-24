@@ -87,7 +87,7 @@ async function main() {
     'src/services/providers.cjs', 'src/services/transport.cjs', 'src/services/latex.cjs', 'src/capture/geometry.cjs',
     'src/capture/overlay.html', 'src/capture/overlay.js', 'src/capture/overlay.css', 'src/capture/preload.cjs',
     'src/renderer/index.html', 'src/renderer/app.js', 'src/renderer/styles.css', 'assets/vendor/katex.min.js', 'assets/vendor/katex.min.css', 'assets/vendor/LICENSE-KaTeX.txt',
-    'assets/icon.png', 'assets/tray.png', 'assets/test-equation.png'];
+    'assets/icon.png', 'assets/tray.png', 'assets/test-equation.png', 'assets/native-pattern.html', 'assets/native-pattern.js'];
   for (const name of required) check(`Required packed resource: ${name}`, files.includes(name) && !asar.statFile(archive, name, false).unpacked && asar.statFile(archive, name, false).size > 0);
   check('Offline preview fonts are bundled', files.filter(name => /^assets\/vendor\/fonts\/.*\.(?:woff2?|ttf)$/.test(name)).length >= 20);
   check('Chinese help is bundled', diskFiles.includes('resources/使用说明.txt'));

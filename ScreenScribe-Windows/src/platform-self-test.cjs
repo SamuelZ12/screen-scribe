@@ -38,8 +38,8 @@ async function run(electron){
     let allowedURL=url;
     win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(event,target)=>{if(target!==allowedURL)event.preventDefault();});
     const state={version:app.getVersion(),platform:'win32',isDemo:true,settings:{provider:'mathpix',mode:'equation',visionBaseURL:'https://api.openai.com/v1',visionModel:'',captureShortcut:'Control+Shift+L',pasteShortcut:'Control+Shift+V',persistImages:false,monthlyImageLimit:0},credentialStatus:{mathpix:false,vision:false},busy:false,error:null,notice:'离线 Windows 自检 · 内置公开测试图',result:{id:'native-self-test',createdAt:new Date().toISOString(),mode:'equation',provider:'mathpix',code:String.raw`E=mc^2,\qquad x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}`,structure:'',warnings:[],confidence:null,imageDataUrl:image.toDataURL()},history:[],quota:{remaining:null,monthlyUsed:null,detail:'离线自检，未发送 API 请求。',completionRemainder:0,nextRefreshIn:5,stale:false},pinned:true,shortcutError:null};
-    let rendererReady=false;
-    ipcMain.handle('screenscribe:state',event=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!==url)throw new Error('source');rendererReady=true;return state;});
+    let rendererReady=false,patternPaintReady=false;
+    ipcMain.handle('screenscribe:state',event=>{if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||![url,allowedURL].includes(event.senderFrame.url))throw new Error('source');if(event.senderFrame.url===url)rendererReady=true;else patternPaintReady=true;return state;});
     ipcMain.handle('screenscribe:action',()=>({ok:false,error:'离线自检不调用识别服务。'}));
     await win.loadFile(html);win.show();win.focus();
     const deadline=Date.now()+8000;while(!rendererReady&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50));
@@ -53,9 +53,12 @@ async function run(electron){
     let cells='';
     for(let y=0;y<10;y++)for(let x=0;x<10;x++)cells+=`<i style="background:${colours[(x+3*y)%4]}"></i>`;
     const fixture=path.join(folder,'public-test-pattern.html');
-    fs.writeFileSync(fixture,`<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}body{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}i{display:block}</style>${cells}`);
+    fs.writeFileSync(fixture,`<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-screenscribe-native-test'"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}body{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}i{display:block}</style>${cells}<script nonce="screenscribe-native-test">requestAnimationFrame(()=>requestAnimationFrame(()=>window.screenScribe.getState()));</script>`);
     phase='load public multicolour fixture';allowedURL=pathToFileURL(fixture).href;
     await win.loadFile(fixture);win.show();win.focus();
+    phase='wait for public fixture compositor frames';
+    const paintDeadline=Date.now()+8000;while(!patternPaintReady&&Date.now()<paintDeadline)await new Promise(resolve=>setTimeout(resolve,40));
+    check('Public test pattern painted two compositor frames',patternPaintReady);
     phase='render public multicolour fixture';
     const rendered=await win.webContents.capturePage();
     phase='enumerate Windows displays';
@@ -76,6 +79,7 @@ async function run(electron){
     report.ok=true;
   }catch(error){
     report.ok=false;report.failedPhase=phase;
+    report.errorCategory=/capture page/i.test(String(error.message))?'PAGE_CAPTURE_UNAVAILABLE':null;
     report.errorCode=typeof error.code==='string'&&/^[A-Z0-9_]{1,80}$/.test(error.code)?error.code:null;
     report.errorName=typeof error.name==='string'&&/^[A-Za-z]{1,40}$/.test(error.name)?error.name:'Error';
     if(!report.checks.some(c=>!c.passed))report.checks.push({name:'Native test completed without runtime exception',passed:false});

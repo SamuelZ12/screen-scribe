@@ -1,0 +1,73 @@
+# Standalone folder workflow: when this project becomes a repository, this file
+# runs there. In a monorepo copy it to the top-level .github/workflows and set
+# defaults.run.working-directory + cache-dependency-path to ScreenScribe-Windows.
+name: Windows build and native checks
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows-x64:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-fund
+      - run: npm run check
+      - run: npm test
+      - run: npm run smoke
+      - name: Native Windows DPAPI, renderer, shortcuts and public-fixture crop
+        run: npx electron . --platform-self-test
+      - name: Preserve native result
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path "$env:TEMP/ScreenScribe-Windows-self-test.json") {
+            New-Item artifacts -ItemType Directory -Force | Out-Null
+            Copy-Item "$env:TEMP/ScreenScribe-Windows-self-test.json" artifacts/native-windows-self-test.json
+          }
+      - run: npm run dist:win
+      - run: node scripts/verify-package.cjs
+      - name: Install and test packaged Windows application
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/*Setup.exe | Select-Object -First 1
+          if (-not $installer) { throw 'Missing installer' }
+          $target = Join-Path $env:RUNNER_TEMP 'ScreenScribe-Installed-Acceptance'
+          $install = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$target") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw 'Installer failed' }
+          $exe = Join-Path $target 'ScreenScribe.exe'
+          if (-not (Test-Path -LiteralPath $exe)) { throw 'Installed executable missing' }
+          $report = Join-Path $env:TEMP 'ScreenScribe-Windows-self-test.json'
+          if (Test-Path -LiteralPath $report) { Remove-Item -LiteralPath $report }
+          $native = Start-Process -FilePath $exe -ArgumentList '--platform-self-test' -Wait -PassThru
+          if (Test-Path -LiteralPath $report) { Copy-Item -LiteralPath $report artifacts/installed-windows-self-test.json }
+          if ($native.ExitCode -ne 0) { throw 'Installed native checks failed' }
+          $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+          if (-not $result.ok -or $result.platform -ne 'win32') { throw 'No native Windows evidence' }
+      - name: Uninstall isolated acceptance copy
+        if: always()
+        shell: pwsh
+        run: |
+          $uninstaller = Join-Path $env:RUNNER_TEMP 'ScreenScribe-Installed-Acceptance/Uninstall ScreenScribe.exe'
+          if (Test-Path -LiteralPath $uninstaller) {
+            $process = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw 'Uninstaller failed' }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ScreenScribe-Windows-x64
+          path: |
+            dist/*Setup.exe
+            artifacts/*.json
+          if-no-files-found: error

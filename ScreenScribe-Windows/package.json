@@ -1,0 +1,79 @@
+{
+  "name": "screenscribe-windows",
+  "productName": "ScreenScribe",
+  "version": "0.1.0",
+  "description": "Windows 托盘公式截图识别工具，支持 Mathpix、视觉模型与离线 LaTeX 预览",
+  "author": "ScreenScribe contributors",
+  "license": "MIT",
+  "private": true,
+  "main": "src/main.cjs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "electron .",
+    "demo": "electron . --demo",
+    "test": "node --test tests/*.test.cjs",
+    "check": "node scripts/check.cjs",
+    "smoke": "node scripts/run-smoke.cjs",
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "dist:arm64": "electron-builder --win nsis --arm64 --publish never",
+    "pack:win": "electron-builder --win dir --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "org.screenscribe.windows",
+    "productName": "ScreenScribe",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build-resources"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "LICENSE",
+      "THIRD-PARTY-NOTICES.md",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "docs/使用说明.txt",
+        "to": "使用说明.txt"
+      }
+    ],
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build-resources/icon.ico",
+      "signExecutable": false,
+      "requestedExecutionLevel": "asInvoker",
+      "artifactName": "ScreenScribe-Windows-${version}-${arch}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "ScreenScribe",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "displayLanguageSelector": true,
+      "license": "LICENSE"
+    },
+    "publish": null
+  }
+}

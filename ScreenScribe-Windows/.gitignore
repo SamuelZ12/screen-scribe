@@ -1,0 +1,16 @@
+node_modules/
+.cache/
+dist/
+artifacts/
+test-results/
+*.log
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+.DS_Store
+
+# Local operation records
+docs/OPERATION-AUDIT.md
+docs/validation/

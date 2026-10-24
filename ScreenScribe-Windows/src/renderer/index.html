@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ScreenScribe</title>
+  <link rel="stylesheet" href="../../assets/vendor/katex.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="../../assets/vendor/katex.min.js" defer></script>
+  <script src="app.js" type="module"></script>
+</head>
+<body>
+  <main class="app-shell" aria-label="ScreenScribe 识别面板">
+    <header class="toolbar" aria-label="工具栏">
+      <button class="icon-button" data-action="capture" data-icon="capture" title="直接框选截图" aria-label="直接框选截图"></button>
+      <button class="icon-button" data-action="import-image" data-icon="import" title="从图片识别" aria-label="从图片识别"></button>
+      <button class="icon-button" data-action="paste-image" data-icon="paste" title="粘贴图片识别" aria-label="粘贴图片识别"></button>
+      <button class="icon-button function-button" id="mode-button" data-action="toggle-mode-menu" title="识别类型和服务" aria-label="识别类型和服务" aria-expanded="false">ƒ(x)</button>
+      <button class="icon-button" data-action="shortcuts" data-icon="keyboard" title="快捷键" aria-label="快捷键"></button>
+      <button class="icon-button" id="history-button" data-action="history" data-icon="list" title="历史记录" aria-label="历史记录"></button>
+      <span class="toolbar-rule"></span>
+      <div class="navigation" aria-label="识别历史导航">
+        <button class="icon-button small" id="first-button" data-action="first-history" data-icon="first" title="最早的记录" aria-label="最早的记录"></button>
+        <button class="icon-button small" id="prev-button" data-action="prev-history" data-icon="left" title="上一条记录" aria-label="上一条记录"></button>
+        <span id="history-counter" class="history-counter" aria-label="当前记录">0/0</span>
+        <button class="icon-button small" id="next-button" data-action="next-history" data-icon="right" title="下一条记录" aria-label="下一条记录"></button>
+        <button class="icon-button small" id="last-button" data-action="last-history" data-icon="last" title="最新的记录" aria-label="最新的记录"></button>
+      </div>
+      <span class="toolbar-spacer"></span>
+      <button class="icon-button" id="delete-button" data-action="delete-current" data-icon="trash" title="删除当前记录" aria-label="删除当前记录"></button>
+      <button class="icon-button" id="pin-button" data-action="toggle-pin" data-icon="pin" title="固定面板" aria-label="固定面板" aria-pressed="false"></button>
+      <button class="icon-button" id="settings-button" data-action="settings" data-icon="settings" title="设置" aria-label="设置"></button>
+      <button class="icon-button" data-action="hide" data-icon="close" title="收起到托盘" aria-label="收起到托盘"></button>
+    </header>
+
+    <div id="mode-menu" class="mode-menu" hidden>
+      <p class="menu-caption">识别类型</p>
+      <button data-action="mode-equation" title="识别公式为 LaTeX" aria-label="识别公式为 LaTeX">公式 <span>LaTeX</span></button>
+      <button data-action="mode-feynman" title="使用视觉模型识别费曼图，实验性" aria-label="使用视觉模型识别费曼图，实验性">费曼图 <span>实验性 · TikZ</span></button>
+      <div class="menu-separator"></div>
+      <p class="menu-caption">识别服务</p>
+      <button data-action="provider-mathpix" title="使用 Mathpix 识别公式" aria-label="使用 Mathpix 识别公式">Mathpix <span id="mathpix-choice"></span></button>
+      <button data-action="provider-vision" title="使用兼容 OpenAI 的视觉模型" aria-label="使用兼容 OpenAI 的视觉模型">视觉模型 <span id="vision-choice"></span></button>
+    </div>
+
+    <section id="recognition-page" class="recognition-page">
+      <nav class="tabs" aria-label="结果视图">
+        <div class="tab-list" role="tablist" aria-label="识别结果">
+          <button id="tab-ocr" class="tab selected" role="tab" aria-selected="true" aria-controls="result-area" data-action="tab-ocr" title="公式预览" aria-label="公式预览">OCR</button>
+          <button id="tab-data" class="tab" role="tab" aria-selected="false" aria-controls="result-area" data-action="tab-data" title="编辑识别源码" aria-label="编辑识别源码">Data</button>
+          <button id="tab-original" class="tab" role="tab" aria-selected="false" aria-controls="result-area" data-action="tab-original" title="所选区域原图" aria-label="所选区域原图">Original</button>
+        </div>
+        <button id="quota-badge" class="quota-badge" data-action="quota-settings" title="查看剩余额度与用量" aria-label="查看剩余额度与用量">设置额度</button>
+        <div class="provider-badge"><span id="provider-label">Mathpix</span><strong id="mode-label">Equation</strong></div>
+      </nav>
+      <section id="result-area" class="result-area" role="tabpanel" aria-labelledby="tab-ocr">
+        <div id="preview-header" class="preview-header">
+          <button id="show-original" class="text-button" data-action="toggle-original" title="切换原图对照" aria-label="切换原图对照">Show Original <span class="chevron">⌄</span></button>
+          <div class="preview-status"><span id="busy-spinner" class="spinner" hidden></span><span id="preview-notice" role="status"></span><button id="cancel-button" class="text-button accent" data-action="cancel" hidden title="取消识别" aria-label="取消识别">取消</button></div>
+          <button id="retry-button" class="icon-button small" data-action="recognize" data-icon="retry" title="使用当前设置重新识别" aria-label="使用当前设置重新识别"></button>
+        </div>
+        <div id="preview-content" class="preview-content">
+          <div id="empty-state" class="empty-state">
+            <span class="empty-icon" data-icon="capture"></span>
+            <p id="empty-title">框选一下，让公式变成 LaTeX</p>
+            <span id="empty-subtitle">拖选屏幕上的公式，或导入一张图片</span>
+            <button class="primary-button compact" data-action="capture" title="直接框选屏幕上的公式" aria-label="直接框选屏幕上的公式">开始框选 <kbd id="capture-hint">Ctrl+Shift+L</kbd></button>
+          </div>
+          <div id="math-preview" class="math-preview" hidden></div>
+          <div id="structure-preview" class="structure-preview" hidden><strong>图结构</strong><pre id="structure-text"></pre><p>TikZ 源码可在 Data 中编辑；不会自动执行或编译。</p></div>
+          <img id="original-image" class="original-image" alt="本次所选区域的原图" hidden>
+        </div>
+        <div id="data-content" class="data-content" hidden>
+          <div class="data-heading"><strong id="source-heading">LaTeX 源码</strong><span id="edit-state" class="muted"></span><button id="save-source" class="subtle-button compact" data-action="save-source" title="保存源码修改" aria-label="保存源码修改">保存修改</button></div>
+          <p id="error-message" class="error-message" role="alert" hidden></p>
+          <textarea id="source-editor" aria-label="识别源码" placeholder="识别结果会显示在这里" spellcheck="false" autocapitalize="off"></textarea>
+          <ul id="warnings-list" class="warnings-list" hidden></ul>
+        </div>
+      </section>
+      <div class="action-strip">
+        <button id="copy-source-button" class="text-button" data-action="copy-plain" title="复制 LaTeX 源码" aria-label="复制 LaTeX 源码"><span data-icon="copy"></span><span id="copy-label">Copy LaTeX</span></button>
+        <button id="edit-button" class="text-button" data-action="edit-source" title="编辑识别源码" aria-label="编辑识别源码"><span data-icon="edit"></span>Edit Source</button>
+        <span class="flex-spacer"></span>
+        <button id="copy-png-button" class="text-button" data-action="copy-png" title="复制所选原图" aria-label="复制所选原图"><span data-icon="copy"></span>Copy PNG</button>
+        <button id="original-button" class="text-button" data-action="tab-original" title="查看原图" aria-label="查看原图"><span data-icon="photo"></span>Original</button>
+        <button class="icon-button small" data-action="edit-source" data-icon="sliders" title="查看源码与识别提示" aria-label="查看源码与识别提示"></button>
+      </div>
+      <div class="copy-section"><div class="copy-rows" id="copy-rows" aria-label="LaTeX 复制格式"></div></div>
+      <footer class="result-footer">
+        <div><span id="confidence-label">Confidence · 未提供</span><button id="footer-status" class="text-button" data-action="footer-detail" title="查看识别状态" aria-label="查看识别状态">仅处理所选区域 · 本地历史</button></div>
+        <div class="confidence-track" role="progressbar" id="confidence-bar" aria-label="识别置信度" aria-valuemin="0" aria-valuemax="100"><span id="confidence-fill"></span></div>
+      </footer>
+    </section>
+
+    <section id="settings-page" class="secondary-page" hidden aria-label="设置">
+      <div class="secondary-heading"><button class="text-button" data-action="back" title="返回识别" aria-label="返回识别"><span data-icon="left"></span>返回识别</button><strong>设置</strong><span>ScreenScribe <span id="version-label"></span></span></div>
+      <div class="settings-scroll" id="settings-scroll">
+        <div id="settings-feedback" class="inline-feedback" role="status" hidden></div>
+        <section class="settings-section">
+          <h2>识别服务</h2>
+          <div class="field-row"><label for="provider-select">服务</label><select id="provider-select"><option value="mathpix">Mathpix</option><option value="vision">兼容 OpenAI 的视觉模型</option></select></div>
+          <div class="field-row"><label for="mode-select">识别类型</label><select id="mode-select"><option value="equation">公式 → LaTeX</option><option value="feynman">费曼图 → TikZ（实验性）</option></select></div>
+          <p id="mode-explanation" class="field-note">Mathpix 适用于公式识别。费曼图需使用支持图片的视觉模型。</p>
+          <form id="credentials-form" autocomplete="off">
+            <div id="mathpix-fields"><div class="field-row"><label for="mathpix-app-id">App ID</label><input id="mathpix-app-id" type="text" autocomplete="off" spellcheck="false" placeholder="输入 Mathpix App ID"></div></div>
+            <div id="vision-fields" hidden>
+              <div class="field-row"><label for="vision-base">API 地址</label><input id="vision-base" type="url" autocomplete="off" spellcheck="false" placeholder="https://api.openai.com/v1"></div>
+              <div class="field-row"><label for="vision-model">模型名称</label><input id="vision-model" type="text" autocomplete="off" spellcheck="false" placeholder="支持图片输入的模型名称"></div>
+              <div class="button-row"><span class="field-note">切换地址后需另存该地址的凭据。</span><span class="flex-spacer"></span><button class="subtle-button compact" type="button" data-action="save-vision-settings" title="保存 API 地址和模型名称，保留已有凭据" aria-label="保存 API 地址和模型名称，保留已有凭据">保存模型设置</button></div>
+            </div>
+            <div class="field-row"><label for="api-key">API Key</label><input id="api-key" type="password" autocomplete="new-password" spellcheck="false" placeholder="保存后不会再次显示"></div>
+            <div class="credential-line"><span id="credential-status" class="status-dot">未保存凭据</span><span class="flex-spacer"></span><button id="delete-credentials" class="text-button danger" type="button" data-action="delete-credentials" title="删除当前服务的已保存凭据" aria-label="删除当前服务的已保存凭据">删除凭据</button><button id="test-connection" class="subtle-button compact" type="button" data-action="test-connection" title="使用公开测试公式检查连接，会产生一次识别请求" aria-label="使用公开测试公式检查连接，会产生一次识别请求">测试连接</button><button class="primary-button compact" type="submit" title="加密保存凭据" aria-label="加密保存凭据">保存</button></div>
+          </form>
+          <p class="field-note">凭据只在本机加密保存；测试连接会识别一张公开测试公式，可能计费。</p>
+        </section>
+
+        <section class="settings-section" id="quota-section">
+          <div class="section-heading"><h2>额度与用量</h2><button class="text-button accent" data-action="refresh-usage" title="查询 Mathpix 官方图片用量" aria-label="查询 Mathpix 官方图片用量"><span data-icon="retry"></span>刷新用量</button></div>
+          <div class="quota-summary"><div><span>总剩余估算</span><strong id="settings-remaining">尚未设置</strong></div><div><span>本月已用</span><strong id="settings-monthly">—</strong></div><div><span>本月可用</span><strong id="settings-monthly-remaining">—</strong></div></div>
+          <p id="quota-detail" class="field-note">填写 Billing 快照后显示保守估算。官方 API 不直接返回账户总余额。</p>
+          <div class="field-row"><label for="monthly-limit">图片月上限</label><input id="monthly-limit" type="number" min="0" step="1" inputmode="numeric" placeholder="如 20000"><button class="subtle-button compact" data-action="save-monthly-limit" title="保存图片月上限" aria-label="保存图片月上限">保存</button></div>
+          <form id="billing-form">
+            <details id="billing-details"><summary>更新 Billing 余额快照</summary>
+              <p class="field-note">照 Mathpix Billing 页面填写美元金额：余额和待结算用量最多 2 位小数，图片单价最多 6 位小数且大于 0。每张本地先扣 1 次，每 5 次完成后查询官方用量校准。向上预留费用，估算不会因校准而回涨。</p>
+              <div class="billing-grid">
+                <label>账户余额（USD）<input id="billing-credit" type="text" inputmode="decimal" autocomplete="off" placeholder="如 15.00" required></label>
+                <label>待结算用量（USD）<input id="billing-pending" type="text" inputmode="decimal" autocomplete="off" placeholder="如 0.25" required></label>
+                <label>每张图片单价（USD）<input id="billing-price" type="text" inputmode="decimal" autocomplete="off" placeholder="如 0.002" required></label>
+                <label>快照时间（本地）<input id="billing-observed" type="datetime-local" step="60" required></label>
+              </div>
+              <div class="button-row"><button class="text-button danger" type="button" data-action="clear-billing" title="清除本账户余额快照" aria-label="清除本账户余额快照">清除快照</button><span class="flex-spacer"></span><button class="primary-button compact" type="submit" title="保存保守估算所用的账单快照" aria-label="保存保守估算所用的账单快照">保存快照</button></div>
+            </details>
+          </form>
+        </section>
+
+        <section class="settings-section" id="shortcuts-section">
+          <h2>快捷键与历史</h2>
+          <form id="preferences-form">
+            <div class="field-row"><label for="capture-shortcut">框选截图</label><input id="capture-shortcut" type="text" spellcheck="false" placeholder="Control+Shift+L" aria-describedby="shortcut-hint"></div>
+            <div class="field-row"><label for="paste-shortcut">粘贴图片</label><input id="paste-shortcut" type="text" spellcheck="false" placeholder="Control+Shift+V"></div>
+            <p id="shortcut-hint" class="field-note">例如 Control+Shift+L、Alt+Shift+S。请避开系统已占用的组合。</p>
+            <p id="shortcut-error" class="error-message" hidden></p>
+            <label class="checkbox-label"><input id="persist-images" type="checkbox">在历史记录中保存原图</label>
+            <p class="field-note">关闭后，新记录只保存源码；现有原图可在历史页单独移除。最多保留 50 条。</p>
+            <div class="button-row"><span class="flex-spacer"></span><button class="subtle-button compact" type="submit" title="保存快捷键和历史设置" aria-label="保存快捷键和历史设置">保存偏好</button></div>
+          </form>
+        </section>
+        <section class="settings-section about-section"><h2>ScreenScribe for Windows</h2><p class="field-note">一个托盘面板，从截图到可编辑的公式。图片仅在你框选、导入、粘贴或测试连接时发送到所选识别服务。</p><div class="button-row"><button class="text-button" data-action="open-data-folder" title="打开本机应用数据文件夹" aria-label="打开本机应用数据文件夹">数据文件夹</button><button class="text-button" data-action="open-help" title="打开使用说明" aria-label="打开使用说明">使用说明</button><span class="flex-spacer"></span><button class="text-button danger" data-action="quit" title="退出 ScreenScribe" aria-label="退出 ScreenScribe">退出软件</button></div></section>
+      </div>
+    </section>
+
+    <section id="history-page" class="secondary-page" hidden aria-label="历史记录">
+      <div class="secondary-heading"><button class="text-button" data-action="back" title="返回识别" aria-label="返回识别"><span data-icon="left"></span>返回识别</button><strong>历史记录</strong><span id="history-total">0 条</span></div>
+      <div class="history-actions"><span class="muted">仅保存在本机 · 最多 50 条</span><span class="flex-spacer"></span><button class="text-button" data-action="remove-history-images" title="移除全部历史记录中的图片，保留源码" aria-label="移除全部历史记录中的图片，保留源码">移除原图</button><button class="text-button danger" data-action="clear-history" title="清空全部历史记录" aria-label="清空全部历史记录">清空历史</button></div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+
+    <div id="confirmation" class="confirmation" role="alertdialog" aria-modal="true" aria-labelledby="confirmation-title" hidden><div class="confirmation-card"><strong id="confirmation-title"></strong><p id="confirmation-detail"></p><div class="button-row"><span class="flex-spacer"></span><button class="subtle-button compact" data-action="dismiss-confirmation" title="取消操作" aria-label="取消操作">取消</button><button id="confirm-button" class="primary-button compact" data-action="confirm" title="确认操作" aria-label="确认操作">确认</button></div></div></div>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </main>
+</body>
+</html>

@@ -60,6 +60,9 @@ function containsPrivateLiteral(text) {
   return /(?:\/Users\/|C:\\\\Users\\\\|-----BEGIN (?:[A-Z ]*PRIVATE KEY|CERTIFICATE)-----)/.test(text) ||
     /(?:apiKey|app_key|app_id)\s*['"]?\s*:\s*['"][^'"\r\n]+['"]/.test(text);
 }
+// Keep the inventory in POSIX form for the allowlists, but ASAR's directory
+// traversal splits on the host path.sep (including on Windows).
+const archiveName = name => name.split('/').join(path.sep);
 async function digest(file) {
   const hash = createHash('sha256');
   for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
@@ -75,7 +78,7 @@ async function main() {
   for (const name of paths) {
     check('ASAR paths stay within application archive', !name.startsWith('../') && !name.includes('/../') && !name.includes('\0'));
     if (!name) continue;
-    const info = asar.statFile(archive, name, false);
+    const info = asar.statFile(archive, archiveName(name), false);
     if (info.link) throw new AuditFailure('no ASAR symbolic links');
     if (info.files) continue;
     if (privatePath(name)) throw new AuditFailure('no private files in ASAR');
@@ -88,10 +91,13 @@ async function main() {
     'src/capture/overlay.html', 'src/capture/overlay.js', 'src/capture/overlay.css', 'src/capture/preload.cjs',
     'src/renderer/index.html', 'src/renderer/app.js', 'src/renderer/styles.css', 'assets/vendor/katex.min.js', 'assets/vendor/katex.min.css', 'assets/vendor/LICENSE-KaTeX.txt',
     'assets/icon.png', 'assets/tray.png', 'assets/test-equation.png', 'assets/native-pattern.html', 'assets/native-pattern.js'];
-  for (const name of required) check(`Required packed resource: ${name}`, files.includes(name) && !asar.statFile(archive, name, false).unpacked && asar.statFile(archive, name, false).size > 0);
+  for (const name of required) {
+    const info = files.includes(name) && asar.statFile(archive, archiveName(name), false);
+    check(`Required packed resource: ${name}`, info && !info.unpacked && info.size > 0);
+  }
   check('Offline preview fonts are bundled', files.filter(name => /^assets\/vendor\/fonts\/.*\.(?:woff2?|ttf)$/.test(name)).length >= 20);
   check('Chinese help is bundled', diskFiles.includes('resources/使用说明.txt'));
-  const read = name => asar.extractFile(archive, name).toString('utf8');
+  const read = name => asar.extractFile(archive, archiveName(name)).toString('utf8');
   const metadata = JSON.parse(read('package.json')), expected = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   check('Packaged application version and entry point match project', metadata.version === expected.version && metadata.name === expected.name && metadata.main === 'src/main.cjs');
   report.version = metadata.version;

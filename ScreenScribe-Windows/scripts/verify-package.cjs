@@ -83,7 +83,7 @@ async function main() {
     files.push(name);
   }
   const required = ['package.json', 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'src/main.cjs', 'src/preload.cjs', 'src/core/controller.cjs',
-    'src/core/storage.cjs', 'src/core/credentials.cjs', 'src/core/history.cjs', 'src/core/credit.cjs', 'src/core/settings.cjs',
+    'src/core/storage.cjs', 'src/core/os-crypto.cjs', 'src/core/credentials.cjs', 'src/core/history.cjs', 'src/core/credit.cjs', 'src/core/settings.cjs',
     'src/services/providers.cjs', 'src/services/transport.cjs', 'src/services/latex.cjs', 'src/capture/geometry.cjs',
     'src/capture/overlay.html', 'src/capture/overlay.js', 'src/capture/overlay.css', 'src/capture/preload.cjs',
     'src/renderer/index.html', 'src/renderer/app.js', 'src/renderer/styles.css', 'assets/vendor/katex.min.js', 'assets/vendor/katex.min.css', 'assets/vendor/LICENSE-KaTeX.txt',

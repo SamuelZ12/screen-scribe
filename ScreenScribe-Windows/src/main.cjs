@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const {fileURLToPath,pathToFileURL}=require('node:url');
 const {JsonFileStore}=require('./core/storage.cjs');
 const {CredentialVault}=require('./core/credentials.cjs');
+const {createWindowsCryptoAdapter}=require('./core/os-crypto.cjs');
 const {HistoryStore}=require('./core/history.cjs');
 const {CreditStore}=require('./core/credit.cjs');
 const {Controller,UserError}=require('./core/controller.cjs');
@@ -55,20 +56,13 @@ function captureSender(event){
   return item&&event.senderFrame===item.window.webContents.mainFrame&&event.senderFrame.url===pathToFileURL(overlayPath).href?item:null;
 }
 function memoryStore(){const data=new Map();return{read:(name,fallback)=>structuredClone(data.has(name)?data.get(name):fallback),write:(name,value)=>data.set(name,structuredClone(value))};}
-async function cryptoAvailable(){
-  if(process.platform!=='win32'||demo)return false;
-  return typeof safeStorage.isAsyncEncryptionAvailable==='function'?await safeStorage.isAsyncEncryptionAvailable():safeStorage.isEncryptionAvailable();
-}
 async function start(){
   app.setAccessibilitySupportEnabled(true);
   localSession=secureSession();
   screen.on('display-removed',()=>cancelCapture());
   screen.on('display-metrics-changed',()=>cancelCapture());
   const storage=demo?memoryStore():new JsonFileStore(app.getPath('userData'));
-  const cryptoAdapter={available:cryptoAvailable,
-    encrypt:async value=>typeof safeStorage.encryptStringAsync==='function'?await safeStorage.encryptStringAsync(value):safeStorage.encryptString(value),
-    decrypt:async value=>typeof safeStorage.decryptStringAsync==='function'?await safeStorage.decryptStringAsync(value):safeStorage.decryptString(value),
-  };
+  const cryptoAdapter=createWindowsCryptoAdapter(safeStorage,{enabled:!demo});
   const vault=new CredentialVault(storage,cryptoAdapter),history=new HistoryStore(storage),credit=new CreditStore(storage);
   const io={platform:process.platform,testPNG:fs.readFileSync(path.join(root,'assets/test-equation.png')),
     capture:beginCapture,cancelCapture:()=>cancelCapture(),importImage,pasteImage,

@@ -6,6 +6,7 @@ const {randomUUID}=require('node:crypto');
 const {pathToFileURL}=require('node:url');
 const {JsonFileStore}=require('./core/storage.cjs');
 const {CredentialVault}=require('./core/credentials.cjs');
+const {createWindowsCryptoAdapter}=require('./core/os-crypto.cjs');
 const {cropRect}=require('./capture/geometry.cjs');
 async function run(electron){
   const {app,BrowserWindow,ipcMain,safeStorage,globalShortcut,screen,desktopCapturer,nativeImage,session}=electron;
@@ -15,11 +16,8 @@ async function run(electron){
   const check=(name,pass)=>{report.checks.push({name,passed:Boolean(pass)});if(!pass)throw new Error(name);};
   try{
     check('Windows 10/11 process',process.platform==='win32');
-    const available=typeof safeStorage.isAsyncEncryptionAvailable==='function'?await safeStorage.isAsyncEncryptionAvailable():safeStorage.isEncryptionAvailable();
-    check('Windows DPAPI available',available);
-    const cryptoAdapter={available:async()=>available,
-      encrypt:async text=>typeof safeStorage.encryptStringAsync==='function'?safeStorage.encryptStringAsync(text):safeStorage.encryptString(text),
-      decrypt:async bytes=>typeof safeStorage.decryptStringAsync==='function'?safeStorage.decryptStringAsync(bytes):safeStorage.decryptString(bytes)};
+    const cryptoAdapter=createWindowsCryptoAdapter(safeStorage);
+    check('Windows DPAPI available',await cryptoAdapter.available());
     const vault=new CredentialVault(new JsonFileStore(folder),cryptoAdapter);
     const synthetic={appId:`self-test-${randomUUID()}`,apiKey:`synthetic-${randomUUID()}`};
     await vault.save('mathpix',synthetic);

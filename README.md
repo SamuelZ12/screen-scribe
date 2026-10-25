@@ -1,150 +1,253 @@
 # ScreenScribe V0.1 · 理论物理截图识别
 
-原生 macOS 菜单栏工具：**框选截图 → Mathpix / 用户指定视觉 API → 编辑 LaTeX 或 TikZ → 复制**。macOS 14+，Swift、SwiftUI、AppKit；保留原版 Apple Vision 离线文字 OCR、Gemini 自定义提示词工具。
+面向论文和讲义阅读的桌面截图工具：**框选图片 → 调用自己的识别 API → 编辑 LaTeX / TikZ → 复制**。公式支持离线排版预览。
 
-本项目 V0.1 发布说明见 [Release 说明](docs/RELEASE-v0.1.md)。
+项目包含原生 **macOS 菜单栏版**和独立的 **Windows 托盘版**。两端沿用同一面板交互，支持 Mathpix 公式识别、用户配置的视觉 API、原图对照、本地历史和识别额度估算。
 
-本目录已从 [pionplusminus/screen-scribe](https://github.com/pionplusminus/screen-scribe) 克隆，`origin` 保留该远端。V0.1 在该仓库发布；保留上游历史与 MIT 声明。原版主要做屏幕截图、离线文字提取、Gemini 的 LaTeX/Markdown/自定义提示词提取，历史只在内存。本次在原项目上扩展，保留 Carbon 全局快捷键基础，并完善截图和识别链路。
+**当前进度（2026-10-25）**：V0.1 分发资产已发布。Mac 版已完成真实 Mathpix 端到端验收；Windows V0.1 为内测版，已通过 Windows 原生 CI 与安装后自检，客户端人工验收和体积优化仍待推进。
 
-## 直接框选与固定签名状态（2026-10-24）
+## 下载与版本状态
 
-已加入固定本地签名工具，并在用户明确同意后为当前机器配置用途受限的本地代码签名身份。构建脚本会复用 `.local-signing/` 的同一证书；此目录不可当作 build 缓存删除，也不会提交 Git。详情见 [固定本地签名](scripts/local-signing/README.md)。
+[打开 V0.1 Release：成熟 Mac 版与内测 Windows 版](https://github.com/pionplusminus/screen-scribe/releases/tag/math)
 
-本机已完成固定版录屏授权。最新实际应用在保存配置、重新编译且 CDHash 变化后，完整退出重启仍自动读回 App ID 和掩码密钥；直接框选、Original 对照及真实 Mathpix 识别全部成功，返回完整 `I(U)=1-[1/U]_+ + C\delta(U)?`，服务置信度为 100%。本次未重新输入凭据、未重新授权，也未出现录屏或钥匙串弹窗。此前 Escape 取消及凭据组件跨编译读写、错误签名拒绝测试均已通过。详见 [实际测试结果](docs/TESTING.md)。
+| 用途 | 文件 | 大小 | 适用范围 |
+| --- | --- | --- | --- |
+| Mac 安装 | [latexhelper-v0.1-macOS-arm64.dmg](https://github.com/pionplusminus/screen-scribe/releases/download/math/latexhelper-v0.1-macOS-arm64.dmg) | 约 2.09 MiB | macOS 14+，Apple Silicon / arm64 |
+| Windows 安装 | [ScreenScribe-Windows-0.1.0-x64-Setup.exe](https://github.com/pionplusminus/screen-scribe/releases/download/math/ScreenScribe-Windows-0.1.0-x64-Setup.exe) | 约 108.32 MiB | Windows 10/11，Intel / AMD x64，内测 |
+| Windows 开发交接 | [ScreenScribe-Windows-0.1.0-source.zip](https://github.com/pionplusminus/screen-scribe/releases/download/math/ScreenScribe-Windows-0.1.0-source.zip) | 约 1.12 MiB | 完整源码、资源、测试、锁文件及交接说明 |
 
-已删除 4 个旧测试应用，当前仅保留 `build/Local/Build/Products/Release/ScreenScribe.app`。源码和固定签名状态未删除。本机操作审计与清理清单仅保留在开发机器，公开验证范围见 [测试说明](docs/TESTING.md)。
+版本号为 **0.1.0**，Mac 构建号为 **16**。当前公开 Release 的实际标签为 `math`。Mac 下载文件名为 `latexhelper-…dmg`，包内应用仍为 **ScreenScribe.app**。
 
-## 界面与权限行为
+源码位置：
 
-界面已按参考截图重做为 **716×524 的菜单栏气泡面板**。普通启动只常驻图标，点击显示面板；没有独立结果/设置/历史窗口。顶部工具栏提供截图、导入图片、任务/服务、快捷键、历史、记录前后翻页、删除、固定和设置。OCR / Data / Original 分别用于离线数学预览、源码编辑和原图对照；四行输出各自支持复制、编辑和放大。Copy LaTeX 的右键菜单另提供 `\[…\]` 复制。
+- [macOS：main 分支](https://github.com/pionplusminus/screen-scribe/tree/main)。
+- [Windows：codex/windows-v0.1 分支的 ScreenScribe-Windows 目录](https://github.com/pionplusminus/screen-scribe/tree/codex/windows-v0.1/ScreenScribe-Windows)。该目录尚未合并到 `main`。
+- Release 自动生成的 `Source code (zip/tar.gz)` 对应 `math` 标签的 Mac 源码。**修改 Windows 版请使用上表的专用源码包，或签出 Windows 分支。**
 
-公式预览使用随应用打包的 KaTeX，不访问 CDN，不将源码插入可执行脚本。置信条只显示服务实际提供的 confidence，没有分数时明确显示“未提供”。不支持的 TeX 命令保留源码并提示预览失败。TikZ 仍以源码和图结构说明展示，不在本版中编译。
+安装包不包含共享 API Key。普通使用者下载对应系统的安装包即可，无需安装 Xcode、Node.js 或开发依赖。
 
-此前 ad-hoc 构建不断改变应用身份，旧授权未能匹配新版本，曾出现录屏提示和只截到壁纸的问题。现已配置固定证书，并为固定版重新确认授权；原生框选层使用 nonactivating NSPanel，避免主动切换 Space。应用启动和后台不会申请录屏权限；系统未确认当前应用时，在调用截图 API 前停止，由用户通过设置中的“启用直接框选（系统授权）”入口处理。
+### 安装
 
-还支持导入图片，以及 **⌃⌘⇧4 → 粘贴截图**（叠放图片图标 / **⌘⇧V**）。只在用户点击时读取剪贴板图片，不监视剪贴板；这些入口使用同一 PNG 编码、识别、编辑、预览和历史链路。
+**macOS**：打开 DMG，将 ScreenScribe 拖到 Applications，启动后从菜单栏图标打开面板。发布包使用固定本地开发证书签名，尚未采用 Apple Developer ID 分发签名或公证；首次启动可能需要按系统安全提示确认。
 
-钥匙串所有读写先执行进程级禁止交互策略（legacy macOS Keychain ACL 需要 `SecKeychainSetUserInteractionAllowed(false)`，仅使用 SecItem 的认证选项并不能覆盖它）。本机自签程序即使 DR 固定，默认 Keychain partition 仍随 CDHash 改变，因此本地构建额外使用固定不变的嵌入式 XPC 凭据组件。双方检查消息发送者的代码签名要求，客户端先验证组件的固定 CDHash，再完成无密钥握手，随后才传递凭据。组件仅操作本应用的新专用条目，不改旧 ACL、不开放给其他程序；详情见 [固定本地签名](scripts/local-signing/README.md)。组件缺失或身份校验失败时停止，不自动回退旧条目。其他未配置此组件的构建保留原来的 DR 分组存储。
+**Windows**：运行 EXE 按向导安装，再从桌面、开始菜单或系统托盘打开。默认安装到当前用户目录，无需管理员权限。安装包尚未代码签名，系统可能显示未知发布者。Windows 包较大主要因为随包携带 Electron 运行环境；轻量化尚未实施。
 
-## 构建与运行
+## 主要功能
 
-需要 Xcode 26+ SDK，最低运行系统仍为 macOS 14；本次实际构建环境为 Xcode 26.6 / Swift 6.3.3 / Apple Silicon。
+- **直接框选与图片输入**：快捷键或面板按钮框选，也可导入图片或主动粘贴截图；识别请求只包含用户选定的图片。
+- **公式识别与源码精修**：Mathpix 请求紧凑 LaTeX，减少冗余空格和括号；保留必要环境、显式间距和文本内容，不在本地擅自化简公式。
+- **OCR / Data / Original**：同一面板完成公式排版预览、源码编辑和原图对照，设置与历史也在面板内切换。
+- **多种复制格式**：纯 LaTeX、`$…$`、`$$…$$`、`equation`；复制菜单另提供 `\[…\]`。实际复制保留源码换行和环境。
+- **离线公式预览**：KaTeX、CSS 和字体随应用携带，预览无需 CDN。置信度只展示服务提供的数值，缺失时显示未提供。
+- **本地历史**：最多 50 条、约 25 MB，支持编辑、复制、删除和清空；默认不将原图写入历史，可选择开启。
+- **Mathpix 额度显示**：展示本月图片用量，以及由 Billing 快照保守推算的总剩余次数；逐次扣减、每五次校准，重启保留状态。
+- **实验性费曼图重建**：视觉模型可返回 TikZ / TikZ-Feynman 源码、结构说明和待确认项，需人工对照原图。
+
+Mac 版另外保留原有的 **Apple Vision 离线文字 OCR** 和 **Gemini 自定义提示词工具**；Windows V0.1 未移植这两项旧工具。两端均不在应用中编译或执行生成的 TikZ / TeX。
+
+## 快速开始
+
+1. 安装并打开面板，进入设置，选择 Mathpix 或兼容视觉 API。
+2. 填写并保存自己的凭据；视觉服务还需填写 Base URL 和实际支持图像输入的模型名称。
+3. 选择公式或费曼图任务，框选、导入或粘贴图片。费曼图任务使用视觉服务。
+4. 在 OCR / Data / Original 间核对、编辑并复制结果。
+5. 如需总剩余次数估算，在额度设置中保存 Billing 余额、待结算金额、图片单价和观察时间。
+
+| 操作 | macOS 默认快捷键 | Windows 默认快捷键 |
+| --- | --- | --- |
+| 直接框选识别 | ⌘⇧L | Ctrl+Shift+L |
+| 粘贴图片识别 | ⌘⇧V | Ctrl+Shift+V |
+| 原有离线文字 OCR | ⌘⇧T | 未提供 |
+| 取消框选 | Esc | Esc 或鼠标右键 |
+
+快捷键可以在设置中更改，注册冲突会显示错误；已有用户的自定义组合会保留。Windows 也可先按 Win+Shift+S 截图，再粘贴识别。
+
+Mac 首次直接框选需要系统录屏授权。通过设置中的“启用直接框选（系统授权）”与“在 Finder 中定位此应用”确认授权对象，再按系统提示操作。应用不会在启动或后台自动反复申请录屏权限；不同签名构建的旧授权可能无法沿用。
+
+## 识别服务与费用
+
+### Mathpix：公式识别
+
+填写个人 **App ID** 和 **App Key**。程序通过 HTTPS 调用 `POST https://api.mathpix.com/v3/text`，凭据位于请求 headers，只提取已验证的数学 LaTeX 字段。
+
+请求启用 `rm_spaces`、`idiomatic_braces` 等紧凑源码选项，并仅请求行级数据，避免此前行级与词级数据选项冲突。无法识别内容、限流、认证或网络错误会在面板提示，不自动重试计费请求。
+
+Mathpix 后端用于公式，不提供本应用所需的费曼图转 TikZ 工作流。遇到费曼图请切换视觉服务。复杂公式、低置信结果以及模型未标记的歧义都需要人工核对。
+
+### 兼容视觉 API：公式与实验性费曼图
+
+- **Base URL**：填写 HTTPS API 根地址，例如 `https://api.openai.com/v1`，不包含末尾的 `/chat/completions`。
+- **模型**：填写自己账户实际可用、支持图像输入的模型，不预设任意兼容服务都可用。
+- **Key**：按服务端点隔离保存；切换地址不会自动把原密钥用于新服务。
+- **当前协议**：Chat Completions，使用 base64 PNG 的 `image_url` 输入；尚未实现 Responses 专用端点。
+
+公式与费曼图使用独立提示词和解析器。费曼图结果进行结构和格式检查后作为可编辑源码展示；这些检查不证明拓扑、箭头或粒子标签正确，也不保证任意返回文档都能编译。
+
+“测试连接”会发送内置公开公式图，可能计费；它不上传屏幕，也不能代替复杂样例的准确率测试。识别费用由所选服务收取。OpenAI API 与 ChatGPT 订阅分别计费，应用不使用 ChatGPT 登录凭据。
+
+服务协议和既有核实记录见 [API 核实说明](docs/API-VERIFICATION.md)。
+
+## 剩余次数如何计算
+
+**“总剩余约 N 次”是账单快照估算，不是实时账户余额，也不是服务承诺的可识别次数。**
+
+应用查询的 `GET https://api.mathpix.com/v3/ocr-usage` 用于读取图片用量；Billing 金额由用户手动填写和更新。计算过程为：
+
+1. 用余额、待结算金额和普通图片单价计算基础可覆盖次数，内部采用整数微美元，次数向下取整。
+2. 为待结算金额额外预留 $0.01，并结合已知图片用量补足可能的精度差额。
+3. 每次有效图片请求发出前先在本地扣 1 次，失败和手动重试也保守计入。
+4. **每完成 5 次 Mathpix 请求，查询官方图片用量校准**；服务统计迟到时保留本地扣减，不因迟到数据回涨，也不重复扣除同一批本地请求。
+5. 重启后保留计数和五次余数；跨月或记录异常时要求更新账单快照。
+
+用量按 UTC 自然月查询。可选“图片月上限”是用户填写的展示参数，不修改服务端限额，也不会把控制台的请求速率或 PDF 页数限制当成图片余额。其他设备、其他 Key、不同接口及不同单价的消费可能造成差额，需要重新更新快照。第五次查询刷新的是图片用量，**不会自动刷新 Billing 金额**。
+
+## 架构
+
+| 层次 | macOS | Windows |
+| --- | --- | --- |
+| 桌面外壳 | Swift / SwiftUI / AppKit，菜单栏和单个 NSPopover | Electron 45，托盘和单个面板窗口 |
+| 截图与快捷键 | 原生选区层、ScreenCaptureKit、旧系统截图后端；Carbon 快捷键 | desktopCapturer、各屏幕选区覆盖层、globalShortcut |
+| 识别编排 | 统一识别协议、工作区、取消与结果状态 | 主进程 Controller、受限 IPC、识别 Provider |
+| 公式排版 | WKWebView 内本地 KaTeX | 隔离渲染器内本地 KaTeX |
+| 凭据保护 | macOS Keychain；固定本地构建使用冻结 XPC 凭据组件 | Windows DPAPI，通过 Electron safeStorage 加密 |
+| 本机数据 | UserDefaults、应用支持目录中的 JSON 历史 | 当前用户配置目录中的有界 JSON 存储 |
+
+识别网络请求与凭据操作由受控服务层负责；模型返回内容作为文本和结构化字段处理。Windows 渲染器启用 sandbox / context isolation，关闭 Node 集成；两端公式预览均只加载本地资源，KaTeX 关闭 trust。
+
+Windows 详细结构见 [架构说明](https://github.com/pionplusminus/screen-scribe/blob/codex/windows-v0.1/ScreenScribe-Windows/docs/ARCHITECTURE.md)。
+
+## 数据与隐私
+
+- API Key 不写入源码、普通设置、历史或日志；应用不附带共享密钥。
+- 截图识别只发送用户明确选定的图片；连接测试只发送内置公开图。完整桌面参考画面只在本机用于框选。
+- 不监听剪贴板、不后台连续截图、不自动重试计费请求；带凭据请求不跟随 HTTP 重定向。
+- 历史默认仅持久化文本。关闭原图保存只影响新记录，已有图片需通过历史管理明确清理。
+- 历史源码与账单快照属于本机数据，凭据的系统加密不等于对整个数据目录加密。Windows DPAPI 与登录用户相关，不能防护已被控制的同一用户会话。
+
+| 数据 | macOS | Windows |
+| --- | --- | --- |
+| 历史与配置 | 历史位于 `~/Library/Application Support/ScreenScribe/recognitions.json`，设置位于 UserDefaults | `%APPDATA%\ScreenScribe-Windows` |
+| API 凭据 | Keychain 专用条目 | 用户配置目录内的 DPAPI 密文 |
+| 卸载 | 本机数据需单独管理 | 卸载器默认保留用户配置和历史 |
+
+Mac 本地开发签名状态保存在被 Git 忽略的 `.local-signing/`。该目录及冻结凭据组件不是构建缓存，不应随意删除，也不应随源码交接或分发。固定签名与凭据组件的工作方式见 [本地签名说明](scripts/local-signing/README.md)。
+
+## 已完成的验证与当前限制
+
+以下是既有测试记录，不将功能实现、Mock 测试与真实 API 验收混为一项。
+
+| 项目 | macOS | Windows |
+| --- | --- | --- |
+| 自动回归 | 15 组独立 Swift 测试通过 | 本机 68 项通过；Windows CI 67 项通过、1 项符号链接测试跳过 |
+| 实际运行环境 | Apple Silicon / macOS 26 | Windows Server 2025 x64，10.0.26100 |
+| 真实 Mathpix | 直接框选、Original 对照、识别与连续五次额度校准通过 | 尚未使用真实账户验收 |
+| 凭据恢复 | 主应用更新并重启后自动读回，未重复录屏或钥匙串弹窗 | DPAPI 保存、从新凭据库重新读取和删除通过 |
+| 安装与原生能力 | Release 构建、签名及 DMG 核验通过 | 构建、151 项静态检查、原生自检、静默安装、安装后自检和卸载通过 |
+
+Windows 自检在源码运行和安装后的程序中各通过 14 项检查，覆盖凭据、快捷键、隔离渲染器、显示器匹配及实际桌面截图裁剪；使用自有公开彩色测试窗对照。**它没有自动操作正式选区界面的鼠标拖动或托盘，因此不等于 Windows 10/11 客户端完整人工验收。**
+
+- [Mac 测试说明](docs/TESTING.md)
+- [Windows 测试说明](https://github.com/pionplusminus/screen-scribe/blob/codex/windows-v0.1/ScreenScribe-Windows/docs/TEST-RESULTS.md)
+- [Windows 成功 CI](https://github.com/pionplusminus/screen-scribe/actions/runs/40109506792)
+
+尚待完成：
+
+- Windows 10/11 客户端正式框选、托盘、混合 DPI 多屏和真实 API 验收；Mac 的更多系统版本、多屏、缩放与全屏 Space 回归。
+- 视觉后端与原有 Gemini 工具的真实账户测试，以及真实论文公式和费曼图准确率记录。
+- Windows 安装包轻量化；当前保留 Electron 实现作为功能基线，后续优化由协作者接续。
+- 更完整的分发签名、公证和发布流程。
+
+当前未提供 PDF 批处理、实时 OCR、云同步、账号或订阅系统，也没有 TikZ 应用内编译预览。Mac 当前分发包为 arm64，Windows 当前分发包为 x64，其他架构未完成分发验收。
+
+## 从源码构建
+
+### macOS
+
+需要 Xcode 26+ SDK；最低部署版本为 macOS 14。既有构建验证环境为 Xcode 26.6 / Swift 6.3.3。
+
+在仓库根目录执行：
 
 ```sh
 ./scripts/build-local.sh
 open build/Local/Build/Products/Release/ScreenScribe.app
 ```
 
-该脚本构建 Release 并执行签名校验；本机默认复用已配置的 `.local-signing/` 固定证书。已有本地签名配置失效时会报错，不静默回退 ad-hoc。也可设置 `SCREENSCRIBE_SIGNING_IDENTITY` 为已安装的固定签名证书；全新检出且没有签名配置时才使用 ad-hoc。构建脚本不会创建证书、修改信任或自动授权。产物是个人本地应用，未公证，未用于 App Store；现代 macOS 使用原生框选与 ScreenCaptureKit，旧系统使用 `screencapture` 子进程。目标不启用 App Sandbox，保留 hardened runtime。仓库不再要求 `Secrets.plist`。
+脚本构建 Release 并校验签名。已有固定签名配置时会复用同一身份，配置失效则停止，不静默回退；全新检出且未配置签名时才使用 ad-hoc。脚本不会创建证书、改信任或自动授权。长期使用与分发应按自己的签名身份规划，详情见 [本地签名说明](scripts/local-signing/README.md)。
 
-也可打开 `ScreenScribe.xcodeproj`，选择 `ScreenScribe` scheme；Signing 中选择自己的开发团队。稳定的 Apple Development 签名更适合长期使用屏幕录制权限与 Keychain；重新编译 ad-hoc 应用可能改变系统对应用身份的判断。不要同时运行多个构建版本。
-
-仅验证编译、不签名：
-
-```sh
-xcodebuild -project ScreenScribe.xcodeproj -scheme ScreenScribe \
-  -configuration Debug -derivedDataPath build/Debug CODE_SIGNING_ALLOWED=NO build
-```
-
-## 使用
-
-1. 启动后在菜单栏找取景框图标；不需保持任何窗口打开。
-2. 点击面板右上角齿轮 → 科研识别，选择提供商，填写并**保存凭据**。
-3. 从面板顶部的任务/服务菜单选择公式或费曼图。点“截图识别”，或按默认 **⌘⇧L**；离线文字 OCR 是 **⌘⇧T**。可在设置“快捷键与原有工具”中录制新组合；Escape 取消录制，注册冲突会显示错误。已安装旧版的用户保留已有快捷键。
-4. 拖动框选公式，松开鼠标开始识别；Escape 取消。本机固定版已完成授权，可直接框选。现代 macOS 使用原生框选和 ScreenCaptureKit，旧系统使用系统选择器；只把选中区域的 PNG 交给识别服务。截图期间收起菜单栏面板，隐藏框选覆盖层后再取图；完成或取消后返回同一面板。
-5. 在面板 OCR / Data / Original 标签间切换，编辑并复制纯公式、行内、独立公式或 equation 环境。多行环境与内部换行不会被替换。费曼图另显示结构说明、待确认项及完整独立文档源码。编辑后点“保存修改”更新历史。
-6. “历史记录”可查看、复制、删除、清空、移除全部已存原图。默认仅保存文本；可在设置开启原图保存，最多 50 条、约 25 MB 图文数据，超出时淘汰最旧记录。普通文件不包含 API Key。
-
-**首次在其他机器启用直接框选**：在设置中点击“启用直接框选（系统授权）”，并用“在 Finder 中定位此应用”确认授权对象，再按系统提示重启。本机已完成此步骤。macOS 用签名身份判断是否为同一个应用，旧 ad-hoc 的 cdhash 授权不能自动转移到固定身份；应用不会在后台反复申请权限。
-
-## API 配置
-
-### Mathpix（公式）
-
-本轮已用真实账户确认并修复 `opts_conflict`：服务不允许同时请求 line_data 与 word_data，现仅请求 line_data。内置连接测试图和三种公式样例均取得 LaTeX；复杂样例服务置信度约 42.8%，仍须人工核对。连接测试使用当前输入，点击“保存凭据”才负责持久化；已验证凭据仅在进程内缓存，不反复读取钥匙串。详见 [实际测试结果](docs/TESTING.md)。
-
-输入个人 Mathpix App ID 和 App Key，保存到 macOS Keychain。固定调用 `https://api.mathpix.com/v3/text`，认证在 HTTP headers。只解析 `latex_styled` 或 `data[type=latex].value`，不把普通 Markdown 文本冒充公式。多个数学片段用 gathered 排列并提示核查；无法可靠推断原对齐时不猜测。低置信字符/行会列为待确认，但置信度无法发现全部歧义。
-
-截图 base64 超过保守的 2 MB 限制时要求缩小选区，不静默缩图。Mathpix 费曼图模式会明确报错，请切换视觉服务。
-
-新增识别采用官方 `rm_spaces=true`、`idiomatic_braces=true` 选项，减少 LaTeX token 间冗余空白与不必要的指标括号。保留字体、显式间距、多行环境和文本内有意义的空格，不以全局替换改写公式。旧历史及手工编辑的源码保持原样。四行复制区也已收紧；预览行只为显示压平换行，实际复制仍保留完整源码和环境。
-
-Mathpix 面板显示**总剩余约 N 次 · 本月已用 M 次**。总剩余基于设置中的 Billing 余额快照和普通图片单价，标注快照时间；费用向上预留、基础次数向下取整。每次有效请求发出前先本地扣 1 次（失败与重试也保守计入），每完成 5 次查询官方 `GET v3/ocr-usage` 校准；服务统计延迟时保留本地扣减，不让剩余回涨。重启保留计数及距下一次查询的余数。启动和手动刷新也可查询用量。
-
-初始待结算费用额外预留 $0.01；若已知本月图片数对应的费用更高，先按单价算出最低图片费用并向上取整到分，再补足预留差额。之后始终逐张扣 1，不逐张按美分跳扣。官方用量不会和本地请求重复扣除，但可追加校准其他设备的同 Key 图片消费。跨月显示“总剩余待更新账单”，避免用不完整的月末数据报出精确剩余。
-
-用量查询范围采用 UTC 自然月；统计可能延迟。设置中的图片月上限仍可选，只用于本月剩余显示，不改变服务限额。普通 OCR Key 不能自动读取 Billing 金额；总剩余使用已保存的账单快照，长文本差价、其他 Key 或其他端点消费需要更新快照。页面中“保存账单快照”会重设本地扣减基准。
-
-控制台的 **200/min 是同步图片请求速率，20,000 pages/month 是 PDF 与 Files 共用的文档页上限**，不能当作截图次数余额。图片默认按量计费、没有月次数上限；公开用量接口没有总余额或总剩余字段，实际套餐与金额需查看 Mathpix Console 的组织 Billing。软件明确显示这项限制，不预设 2,000 或 20,000 次图片额度。依据与官方链接见 [能力与额度核实](docs/API-VERIFICATION.md)。
-
-### OpenAI 兼容视觉 API（公式 / 实验性费曼图）
-
-- Base URL：例如 `https://api.openai.com/v1`，填写 API 根地址，**不含** `/chat/completions`，只接受 HTTPS。
-- 模型：填写账户实际可用、支持图像输入的模型名称；不预设所有模型都支持视觉。
-- API Key：为这个端点保存专用密钥。更换 URL 会清空输入框，需重新读取或保存；不同端点不会自动共用密钥。
-- 协议：Chat Completions，`image_url` base64 PNG、`detail=high`、`max_completion_tokens=8192`；未实现 Responses 专用端点。服务若不接受这些参数，需要适配相应协议，不能保证任意“兼容”服务可用。
-- 本地 PNG 上限 10 MB；具体服务还可能有更严格限制。
-
-费曼图使用独立提示词和 JSON 解析器，要求完整 TikZ / TikZ-Feynman 文档、结构说明、歧义清单。检查基本环境、括号和返回结构，拒绝截断、拒答和明显文件访问命令。**不自动运行模型生成的 TeX**。线型不能证明粒子身份，模型仍可能误读箭头、标签和拓扑，必须人工核查。
-
-“测试连接”会发送内置 `x²+1` 图片并显示返回结果，可能计费；它不上传屏幕，也不能证明复杂公式或费曼图识别准确率。OpenAI API 与 ChatGPT 订阅独立；不要输入 ChatGPT 登录凭据。费用与协议核查见 [API 核实记录](docs/API-VERIFICATION.md)。
-
-### 原有 Gemini 工具
-
-保留原版功能，凭据改为 Keychain，旧 UserDefaults 密钥首次启动成功迁移后删除。请求改为 header 认证，不再拼接密钥到 URL；不记录 API 原始输出。原版模型列表保留，未通过真实 Gemini 账户验证可用性。科研两种模式使用上面两类独立服务。
-
-## 本地数据与安全
-
-- 凭据：Keychain 服务 `app.screenscribe.credentials`；各后端分开，视觉凭据还按完整端点隔离。可在设置中删除对应凭据。
-- 设置：UserDefaults，包括后端、模型、Base URL、模式、快捷键、原图开关；可选图片月上限、账单金额/时间/单价快照及扣减/校准计数按 App ID 哈希隔离保存。不保存密钥或原始 App ID；普通用量响应仅驻内存。
-- 历史：`~/Library/Application Support/ScreenScribe/recognitions.json`，目录 700、文件 600；JSON 以原子方式写入。损坏文件保留并显示错误，用户明确清空后才恢复写入。
-- HTTP：只发送选区或内置测试图，不自动重试计费请求，不跟随重定向，不展示服务错误正文或凭据。网络请求临时会话不持久缓存。
-- 关闭原图持久化影响新记录；历史中的“移除全部原图”可清理旧图。当前打开的结果图仍暂存在内存，退出应用释放。
-
-## 测试
+无真实 API 的自动回归：
 
 ```sh
 ./scripts/run-standalone-tests.sh
-./scripts/verify-fixtures.sh  # 可选：本机需 LuaLaTeX、tikz-feynman 和 Poppler
 ```
 
-独立 Swift 测试无需真实 API Key。测试覆盖请求协议、字段解析、错误状态、限流、断网、输出格式、历史和设置持久化。五种本地图片、源码、公式预期文本在 `Tests/Fixtures/`，可显示 PNG 后进行截图实测。样例编译与模型输出编译是不同的测试。
+可选系统与样例检查为 `scripts/run-system-smoke-tests.sh`、`scripts/verify-fixtures.sh`；前者需正常桌面会话，后者需 LuaLaTeX、TikZ-Feynman 和 Poppler。样例编译通过不代表模型输出可编译或识别准确。
 
-无网络界面演示（不调用 API、不写入历史）：
+### Windows
+
+推荐在目标 Windows 电脑构建，需要 **Node.js ≥ 22.12.0** 和 npm。可解压专用源码 ZIP 后进入项目目录；或签出独立分支：
 
 ```sh
-open -n build/Local/Build/Products/Release/ScreenScribe.app --args --demo --show-settings
+git clone --branch codex/windows-v0.1 https://github.com/pionplusminus/screen-scribe.git
+cd screen-scribe/ScreenScribe-Windows
+npm ci
+npm run check
+npm test
+npm run smoke
+npm run dist:win
 ```
 
-Keychain/剪贴板系统测试须在正常桌面会话执行，使用随机测试条目并恢复原剪贴板；见 `Tests/KeychainClipboardSmokeTests.swift` 和 [测试报告](docs/TESTING.md)。
+安装器输出为 `dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe`，不会自动发布。Electron 与 electron-builder 版本由锁文件固定，首次安装依赖需要联网。
 
-## 目录与交付状态
+Mac 上可用 `npm run demo` 查看 Windows 版的隔离界面演示；演示禁用真实截图、OS 凭据与识别请求，不能作为 Windows 实机识别证据。更多说明见 [Windows README](https://github.com/pionplusminus/screen-scribe/blob/codex/windows-v0.1/ScreenScribe-Windows/README.md)。
+
+## 目录与开发交接
+
+以下为 Windows 分支中的完整目录视图；当前 `main` 仅包含 Mac 端：
 
 ```text
-ScreenScribe.xcodeproj/             原有 Xcode 工程
-ScreenScribe/Sources/App.swift      菜单、权限入口、截图调度
-ScreenScribe/Sources/Services/      原有截图、权限、Gemini 服务
-ScreenScribe/Sources/Settings/      原有设置及 Carbon 快捷键
-ScreenScribe/Sources/Physics/
-  RecognitionTypes.swift           统一识别协议、模式、结果、复制格式
-  MathpixProvider.swift            官方数学 OCR 请求和字段解析
-  MathpixUsageService/Store.swift   官方本月图片用量、账号隔离与可选剩余估算
-  MathpixCreditEstimate/Store.swift 账单保守换算、逐张扣减和每五次校准
-  OpenAICompatibleVisionProvider.swift  视觉请求、独立公式/费曼图解析
-  APITransport.swift               HTTP 状态、超时、取消、重定向保护
-  CredentialStore.swift            Keychain 和旧凭据迁移
-  PhysicsSettings*.swift           科研设置与连接测试
-  PhysicsWorkspace.swift           加载/错误、原图对照、编辑、复制
-  RecognitionHistory*.swift        有界本地历史与管理界面
-Tests/                             原有与新增自动测试、五类样例
-scripts/                           构建签名、自动测试、样例验证
- docs/                             API 核实、阶段交付与测试报告
+ScreenScribe.xcodeproj/       macOS Xcode 工程
+ScreenScribe/Sources/         macOS 菜单栏、截图、快捷键与科研识别
+Tests/                       Swift 回归测试和公开公式/费曼图样例
+scripts/                     Mac 构建、签名与验证工具
+docs/                        Mac 测试、API 核实和发布说明
+ScreenScribe-Windows/
+  src/                       主进程、受限桥接、渲染器、截图和识别服务
+  assets/                    图标、公开测试图、离线 KaTeX 和字体
+  tests/                     Node.js 自动回归
+  scripts/                   Windows 自检与打包校验
+  docs/                      架构、接口、使用及验收说明
+  package.json               开发命令与 NSIS 打包配置
+  package-lock.json          固定依赖版本和完整性
+.github/workflows/           构建与验证 CI
 ```
 
-阶段构建和实际端到端结果见 [测试报告](docs/TESTING.md)。V0.1 下载包面向 Apple Silicon / arm64，使用固定本地开发证书签名，未使用 Apple Developer ID 分发签名，未公证。已提供离线公式排版预览；TikZ 应用内编译预览暂未实现。真实 Mathpix 公式框选及重启后使用已验证，单个样例的服务置信度不能代表总体准确率。多显示器、不同显示缩放、快捷键冲突及其他真实视觉模型结果仍需按报告中的人工检查项验证。没有 PDF 批处理、账号、订阅、云同步或实时 OCR。
+合作者继续开发 Windows 版时，使用约 1.12 MiB 的专用源码 ZIP 即可：包含完整源码、资源、测试、许可证、依赖锁文件和交接说明，不含 `node_modules`、缓存、EXE、Git 历史、用户数据或本机操作日志。解压后执行 `npm ci` 恢复依赖；需要运行现有版本作对照时，另取 EXE 安装包。
 
-后续建议：先用个人 API 对五类样例逐项建立准确率记录，再补真实论文公式、cases/split/矩阵/plus distribution 回归样例；之后加入隔离的预览渲染、更多端点协议与稳定签名发布流程。
+本机生成文件被 Git 忽略，默认不随仓库克隆：
+
+- Mac 正式构建：`build/Local/Build/Products/Release/ScreenScribe.app`
+- Mac DMG：`build/Release-v0.1/ScreenScribe-v0.1-macOS-arm64.dmg`
+- Windows 安装器与源码包：`ScreenScribe-Windows/dist/`
+
+### 已发布文件校验值
+
+```text
+latexhelper-v0.1-macOS-arm64.dmg
+ce86385de15fd75a4ba2714349cb5ead6e44dd1dd3b0d3ef0feaba822b174c20
+
+ScreenScribe-Windows-0.1.0-x64-Setup.exe
+dcabd3a36982763e306857146c585c1ccbf516b6796c187790aaf64eebc86ab9
+
+ScreenScribe-Windows-0.1.0-source.zip
+daaee2a1987fcfa1759ca88d027a2ee8a34248a3287f05aef90231fcce157c51
+```
+
+以上为 SHA-256，来自当前 Release 资产元数据，并与本机对应文件核对。Mac 本机 DMG 与公开附件文件名不同，内容校验值相同。
 
 ## 依赖与许可证
 
-应用使用 Apple 系统框架，并随包携带 KaTeX 0.16.22 的 JavaScript、CSS 和字体用于离线预览，无 Swift Package 或远程 CDN 运行时依赖。KaTeX 为 MIT 许可，详见 [第三方声明](THIRD-PARTY-NOTICES.md)。TeX Live、TikZ-Feynman、Poppler 只用于开发者的可选样例验证，不随应用打包。许可证为 [MIT](LICENSE)，保留 TextGrabber2 和 Samuel Zhang 的版权声明。本项目扩展自 ScreenScribe / TextGrabber2。
+项目采用 [MIT 许可证](LICENSE)，扩展自 ScreenScribe / TextGrabber2，保留原作者及 Samuel Zhang 的版权声明。
+
+Mac 使用 Apple 系统框架、Swift / SwiftUI / AppKit，以及随包携带的 KaTeX；Windows 使用 Electron 45.0.0、electron-builder 26.18.0 和本地 KaTeX。Node.js 是 Windows 开发依赖，不要求最终使用者另外安装。TeX Live、TikZ-Feynman 与 Poppler 仅用于开发者的可选样例验证，不随程序分发。
+
+第三方许可见 [Mac 第三方声明](THIRD-PARTY-NOTICES.md) 和 [Windows 第三方声明](https://github.com/pionplusminus/screen-scribe/blob/codex/windows-v0.1/ScreenScribe-Windows/THIRD-PARTY-NOTICES.md)。

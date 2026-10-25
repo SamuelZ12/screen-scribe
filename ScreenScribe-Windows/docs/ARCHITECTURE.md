@@ -85,7 +85,7 @@ dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe
 
 安装器按当前用户安装，`asInvoker`、`perMachine: false`、`allowElevation: false`，无需管理员权限。当前包未使用代码签名证书，构建命令禁止自动发布。
 
-本机 68 项自动测试通过；Windows CI 67 项通过、1 项符号链接测试跳过。原生运行环境为 Windows Server 2025（10.0.26100）x64，不能据此声称 Windows 10 与 11 客户端均已人工实测。源码位于独立分支 `codex/windows-v0.1`；Mac `main`、正式应用和既有 Release 未改动，尚未发布 Windows Release。
+本机 68 项自动测试通过；Windows CI 67 项通过、1 项符号链接测试跳过。原生运行环境为 Windows Server 2025（10.0.26100）x64，不能据此声称 Windows 10 与 11 客户端均已人工实测。Windows 源码仍在独立分支 `codex/windows-v0.1`，尚未合并 Mac `main`。截至 2026-10-25，Windows 内测版 EXE 与专用源码 ZIP 已由用户发布至同一个 [V0.1 Release（标签 `math`）](https://github.com/pionplusminus/screen-scribe/releases/tag/math)；Mac 程序及其 DMG 未改动。
 
 `--platform-self-test` 在隔离配置中检查 DPAPI 保存、重新读取与删除、全局快捷键、sandbox 渲染器与 IPC、显示器匹配，以及调用正式 `cropRect` 对自有彩色测试窗进行实际桌面截图裁剪。14 项检查已在 [Windows CI](https://github.com/pionplusminus/screen-scribe/actions/runs/40109506792) 的源码运行和安装后副本中分别通过。测试不连接真实识别账户，不读取 Mac 凭据，不上传或保存完整桌面画面。它验证原生能力与裁剪原语，没有自动操作正式选区覆盖层、鼠标拖动或托盘界面。
 

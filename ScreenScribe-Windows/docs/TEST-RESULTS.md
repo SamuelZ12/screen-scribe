@@ -26,7 +26,7 @@
 - [交付清单](../artifacts/delivery-manifest.json)
 - CI 报告：[渲染器桥接](../artifacts/ci-run-40109506792/renderer-smoke.json)、[源码原生自检](../artifacts/ci-run-40109506792/native-windows-self-test.json)、[已安装副本自检](../artifacts/ci-run-40109506792/installed-windows-self-test.json)、[包静态检查](../artifacts/ci-run-40109506792/package-verification.json)。
 
-安装器按当前用户/asInvoker 安装，不请求管理员权限，尚未使用代码签名证书。源码在独立分支 `codex/windows-v0.1`；未合并 Mac `main`，未发布 Windows Release。本机交付目录保留安装器和上述报告；它们不随源码提交到 Git。
+安装器按当前用户/asInvoker 安装，不请求管理员权限，尚未使用代码签名证书。源码在独立分支 `codex/windows-v0.1`，未合并 Mac `main`。截至 2026-10-25，Windows 内测版安装器及专用源码 ZIP 已由用户上传到与 Mac 共用的 [V0.1 Release（标签 `math`）](https://github.com/pionplusminus/screen-scribe/releases/tag/math)，公开 EXE 的 SHA-256 与本报告一致。本机交付目录保留安装器和上述报告；它们不随源码提交到 Git。
 
 ## 原生验收覆盖
 

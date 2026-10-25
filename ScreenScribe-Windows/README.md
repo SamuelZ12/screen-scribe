@@ -2,7 +2,11 @@
 
 这是在独立目录中实现的 Windows 移植版，面向普通 Intel / AMD 电脑上的 **Windows 10 / 11 x64**。沿用 Mac 版的单面板交互：框选公式，识别为可编辑的 LaTeX，原图、预览和复制格式放在一起。父目录中的 Mac 源码、固定签名、凭据与构建保持原样。
 
-安装包：[`ScreenScribe-Windows-0.1.0-x64-Setup.exe`](dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe)（约 108 MiB）。该文件来自已通过构建、静态检查、静默安装、安装后原生自检和卸载的 [Windows CI](https://github.com/pionplusminus/screen-scribe/actions/runs/40109506792)，[SHA-256 校验文件](dist/ScreenScribe-Windows-0.1.0-x64-Setup.exe.sha256)随包提供。源码位于独立分支 [`codex/windows-v0.1`](https://github.com/pionplusminus/screen-scribe/tree/codex/windows-v0.1/ScreenScribe-Windows)。Mac 的 `main` 和既有 Release 未改动，尚未发布 Windows Release。
+**发布状态（2026-10-25）**：Windows 内测版 EXE 和专用源码 ZIP 已与 Mac DMG 一同发布到 [V0.1 Release（标签 `math`）](https://github.com/pionplusminus/screen-scribe/releases/tag/math)。[下载 x64 安装器](https://github.com/pionplusminus/screen-scribe/releases/download/math/ScreenScribe-Windows-0.1.0-x64-Setup.exe)（约 108 MiB）；合作者修改代码可取 [干净源码 ZIP](https://github.com/pionplusminus/screen-scribe/releases/download/math/ScreenScribe-Windows-0.1.0-source.zip)（约 1.12 MiB）。源码包包含代码、资源、测试、锁文件和交接说明，不含依赖、缓存、安装器或本机数据，解压后执行 `npm ci` 恢复依赖。
+
+安装器来自已通过构建、静态检查、静默安装、安装后原生自检和卸载的 [Windows CI](https://github.com/pionplusminus/screen-scribe/actions/runs/40109506792)，SHA-256 为 `dcabd3a36982763e306857146c585c1ccbf516b6796c187790aaf64eebc86ab9`。本机产物位于 `dist/`，该目录不随源码克隆。Windows 源码仍在独立分支 [`codex/windows-v0.1`](https://github.com/pionplusminus/screen-scribe/tree/codex/windows-v0.1/ScreenScribe-Windows)，尚未合并到 Mac `main`；Release 自动生成的标签源码包不包含此 Windows 目录。
+
+当前保留 Electron 实现作为功能基线，安装包轻量化留待协作者继续推进；客户端人工验证范围见下文。
 
 ## 使用
 
